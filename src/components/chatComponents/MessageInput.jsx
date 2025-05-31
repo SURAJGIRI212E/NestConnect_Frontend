@@ -68,13 +68,13 @@ export const MessageInput = ({
             onTyping();
           }}
           placeholder="Type a message..."
-          className="flex-1 p-2 border rounded-full mx-2 focus:outline-none focus:border-blue-500"
+          className="flex-1 p-2 border rounded-full mx-1 focus:outline-none focus:border-blue-500"
           disabled={disabled || isUploading}
         />
 
         <button
           type="submit"
-          className={`p-2 rounded-full ${
+          className={`p-1 rounded-full ${
             (!newMessage.trim() && selectedImages.length === 0) || isUploading
               ? 'text-gray-400 cursor-not-allowed'
               : 'text-blue-500 hover:bg-gray-100'

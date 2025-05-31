@@ -29,12 +29,12 @@ export const WhoToFollow = () => {
   ];
 
   return (
-    <div className="cursor-pointer mt-4 border rounded-lg p-2">
+    <div className="cursor-pointer mt-4 border rounded-lg p-0 lg:p-2">
       <h2 className="text-lg font-bold mb-4">Who to follow</h2>
       {suggestions.map((user, index) => (
         <div
           key={index}
-          className="flex items-center justify-between py-2 hover:bg-gray-100"
+          className="flex items-center justify-between py-2 px-0 md:px-1 hover:bg-gray-100"
           ref={(el) => (profileRefs.current[index] = el)} // Attach refs dynamically
           onMouseEnter={(e) => handleMouseEnter(e, index)}
           onMouseLeave={handleMouseLeaveWithRef}
@@ -47,19 +47,19 @@ export const WhoToFollow = () => {
             />
             <div>
               <div className="flex items-center">
-                <span className="font-bold text-xs">{user.name}</span>
-                {user.verified && (
+                <span className="font-bold text-xs">{user.name}{user.verified && (
                   <img
-                    className="inline w-[14px] h-[14px] ml-1"
+                    className="inline w-[13px] h-[13px]"
                     src={badge}
                     alt="verified"
                   />
-                )}
+                )}</span>
+                
               </div>
               <div className="text-gray-500 text-xs">{user.handle}</div>
             </div>
           </div>
-          <button className="bg-black text-xs text-white rounded-full px-4 py-2">
+          <button className="bg-black text-[10px] text-white rounded-full px-3 lg:px-4 py-2">
             Follow
           </button>
         </div>

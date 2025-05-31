@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { updateConversationWithMessage, updateConversationUnreadCount, deleteConversation, setConversations } from '../redux/slices/chatSlice';
 import { useAuth } from './AuthContext';
 import axiosInstance from '../utils/axios';
+import { SOCKET_URL } from '../config/config';
 
 const SocketContext = createContext();
 
@@ -35,9 +36,14 @@ export const SocketProvider = ({ children }) => {
     if (!user?._id || socketRef.current) return;
 
     // Create socket instance
-    socketRef.current = io(process.env.REACT_APP_API_URL || 'http://localhost:8000', {
+    socketRef.current = io(SOCKET_URL, {
       withCredentials: true,
-      auth: { userId: user._id }
+      auth: { userId: user._id },
+      transports: ['websocket', 'polling'],
+      timeout: 60000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
 
     const socket = socketRef.current;

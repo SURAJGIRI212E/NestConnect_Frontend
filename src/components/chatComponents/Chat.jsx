@@ -41,9 +41,9 @@ export const Chat = () => {
         profile={receiverProfile}
         isLoading={isLoadingProfile}
         error={profileError}
-        isTyping={isTyping}
+     
         onClose={handleCloseChat}
-        conversationId={conversationId}
+     
       />
 
       <MessageList 
@@ -54,6 +54,8 @@ export const Chat = () => {
         setHoveredMessage={setHoveredMessage}
         formatMessageTime={formatMessageTime}
         messagesEndRef={messagesEndRef}
+        isTyping={isTyping}
+        conversationId={conversationId}
       />
 
       <MessageInput 

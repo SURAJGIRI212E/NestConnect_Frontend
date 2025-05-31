@@ -57,6 +57,7 @@ export const Message = () => {
     };
   }, [socket, dispatch]);
 
+
   useEffect(() => {
     if (modalSearchQuery.length < 2) {
       setSearchedUsers([]);
@@ -237,7 +238,7 @@ export const Message = () => {
                   )}
                   <button
                     onClick={(e) => handleDeleteConversation(conversation._id, e)}
-                    className="hidden group-hover:flex items-center justify-center w-8 h-8 text-gray-500 hover:text-red-500 hover:bg-red-100 rounded-full transition-colors"
+                    className=" flex items-center justify-center w-8 h-8 text-gray-500 hover:text-red-500 hover:bg-red-100 rounded-full transition-colors"
                     title="Delete conversation"
                   >
                     <IoTrashBin size="18px" />

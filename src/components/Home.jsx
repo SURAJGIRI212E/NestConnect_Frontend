@@ -22,11 +22,13 @@ const Home = () => {
 
   return (
   
-    <div className='flex justify-between w-[75%] mx-auto h-[100vh]' >
-      <div className="w-[20%]  sticky top-0">
+    <div className='flex w-full mx-auto h-[100vh] lg:w-[75%] lg:justify-between' >
+      {/* Left Sidebar */}
+      <div className="w-min md:w-[4%] lg:w-[20%]  sticky top-0">
         <LeftSidebar />
       </div>
-      <div className='w-[50%] flex flex-grow border-r border-l border-[rgb(239, 243, 244)] overflow-y-auto scrollbar'>
+      {/* Main Feed Area */}
+      <div className={`flex-grow border-r border-l border-[rgb(239, 243, 244)] overflow-y-auto scrollbar ${isChatOpen ? 'hidden sm:block sm:w-[80%] lg:w-[50%]' : 'w-full md:w-[50%] lg:w-[50%]'}`}>
         <Routes>
           <Route index element={<Feed/>}/>
           <Route path="profile" element={<Profile/>}/>
@@ -38,12 +40,13 @@ const Home = () => {
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>
+      {/* Right Sidebar */}
       {isChatOpen ? (
-        <div className="w-[30%] overflow-y-auto">
+        <div className="w-full md:w-[50%] lg:w-[40%] overflow-y-auto overflow-x-hidden border-l border-[rgb(239, 243, 244)]">
           <Chat selectedPeople={selectedPeople} />
         </div>
       ) : (
-        <div className="w-[30%]">
+        <div className="hidden md:block w-[30%] ">
           <RightSidebar />
         </div>
       )}
