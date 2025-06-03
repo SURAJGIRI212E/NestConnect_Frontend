@@ -86,8 +86,7 @@ export const MessageList = ({
             </React.Fragment>
           );
         })}
-
-        {isTyping[conversationId] && (
+        {!!isTyping[conversationId] && (
         <div className="flex items-center mb-2 ml-2 typing-indicator">
         <div className="bg-gray-300 rounded-lg px-2 flex items-center">
           <span className="text-2xl leading-none font-bold mr-[-1px]">.</span>
