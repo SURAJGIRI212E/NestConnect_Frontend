@@ -12,6 +12,11 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [socketError, setSocketError] = useState(null); // New state for socket errors
+  const [callState, setCallState] = useState('idle'); // 'idle', 'calling', 'incoming', 'active'
+  const [incomingCall, setIncomingCall] = useState(null); // { from: user object, signal: signal data }
+  const [outgoingCall, setOutgoingCall] = useState(null); // { to: user object }
+  const [currentCall, setCurrentCall] = useState(null); // { otherUser: user object, isCaller: boolean }
   const dispatch = useDispatch();
   const { user } = useAuth();
   // Fetch initial conversations
@@ -62,7 +67,17 @@ export const SocketProvider = ({ children }) => {
 
     socket.on('getOnlineUsers', (users) => {
       setOnlineUsers(users);
-    });    // Message handlers
+    });
+
+    // Handle errors from socket
+    socket.on('error', ({ message }) => {
+      console.error('Socket Error:', message);
+      setSocketError(message);
+      // Clear error after some time
+      setTimeout(() => setSocketError(null), 5000); 
+    });
+
+    // Message handlers
     socket.on('receiveMessage', ({ message, conversationId }) => {
       const currentUserId = localStorage.getItem('userId');
       dispatch(updateConversationWithMessage({ 
@@ -79,7 +94,8 @@ export const SocketProvider = ({ children }) => {
         message,
         skipUnreadIncrement: true
       }));
-    });    socket.on('unreadCountUpdated', ({ conversationId, unreadCount }) => {
+    });    
+    socket.on('unreadCountUpdated', ({ conversationId, unreadCount }) => {
       dispatch(updateConversationUnreadCount({ conversationId, unreadCount }));
     });
 
@@ -110,6 +126,12 @@ export const SocketProvider = ({ children }) => {
         socket.disconnect();
       }
       socketRef.current = null;
+      socket.off('incomingCall');
+      socket.off('callAccepted');
+      socket.off('callRejected');
+      socket.off('callEnded');
+      socket.off('returningSignal');
+      socket.off('error'); // Clean up error listener
     };
   }, [user, dispatch]);
 
@@ -129,9 +151,119 @@ export const SocketProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [user]);
 
+  // Video call event listeners
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Incoming call notification
+    socket.on('incomingCall', ({ from, signal }) => {
+      console.log('Incoming call from:', from.username);
+      console.log('Socket Event: incomingCall');
+      setIncomingCall({ from, signal });
+      setCallState('incoming');
+    });
+
+    // Call accepted by receiver
+    socket.on('callAccepted', ({ signal, to }) => {
+      console.log('Call accepted by:', to.username);
+      console.log('Socket Event: callAccepted');
+      // This event is received by the caller
+      setCurrentCall({ otherUser: to, isCaller: true });
+      setCallState('active');
+      // The caller needs to process the signal data from the answer
+      // The WebRTC logic will handle this in the VideoCallRoom component
+    });
+
+    // Call rejected by receiver
+    socket.on('callRejected', ({ to }) => {
+      console.log('Call rejected by:', to.username);
+      console.log('Socket Event: callRejected');
+      setOutgoingCall(null);
+      setCallState('idle');
+      // Optionally show a notification to the caller
+    });
+
+    // Call ended by other user
+    socket.on('callEnded', () => {
+      console.log('Call ended by other user');
+      console.log('Socket Event: callEnded');
+      setCurrentCall(null);
+      setCallState('idle');
+      // Optionally show a notification that the call ended
+    });
+
+    // Receive signaling data (ICE candidates, offer/answer)
+    socket.on('returningSignal', ({ signal }) => {
+      console.log('Receiving signaling data', signal);
+      console.log('Socket Event: returningSignal');
+      // This signal needs to be processed by the RTCPeerConnection in the VideoCallRoom component
+      // The WebRTC logic will handle this.
+    });
+
+    // Clean up listeners
+    return () => {
+      socket.off('incomingCall');
+      socket.off('callAccepted');
+      socket.off('callRejected');
+      socket.off('callEnded');
+      socket.off('returningSignal');
+    };
+  }, [socketRef.current]); // Depend on socketRef.current
+
   const emitEvent = (eventName, data) => {
     if (!socketRef.current?.connected || !user?._id) return;
+    setSocketError(null); // Clear previous error before emitting new event
     socketRef.current.emit(eventName, data);
+  };
+
+  // Video call helper functions
+  const callUser = (targetUser) => {
+    if (!socketRef.current?.connected || !user?._id) return;
+    console.log('Calling user:', targetUser.username);
+    console.log('Socket Emit: callUser', { targetUserId: targetUser._id, from: user });
+    setOutgoingCall({ to: targetUser });
+    setCallState('calling');
+    socketRef.current.emit('callUser', { targetUserId: targetUser._id, from: user });
+  };
+
+  const answerCall = (signal) => {
+    if (!socketRef.current?.connected || !user?._id || !incomingCall) return;
+    console.log('Answering call from:', incomingCall.from.username);
+    console.log('Socket Emit: answerCall', { signal, to: incomingCall.from._id, from: user });
+    setCallState('active');
+    setCurrentCall({ otherUser: incomingCall.from, isCaller: false });
+    socketRef.current.emit('answerCall', { signal, to: incomingCall.from._id, from: user });
+    setIncomingCall(null); // Clear incoming call state
+  };
+
+  const rejectCall = () => {
+    if (!socketRef.current?.connected || !user?._id || !incomingCall) return;
+    console.log('Rejecting call from:', incomingCall.from.username);
+    console.log('Socket Emit: rejectCall', { to: incomingCall.from._id });
+    socketRef.current.emit('rejectCall', { to: incomingCall.from._id });
+    setIncomingCall(null); // Clear incoming call state
+    setCallState('idle');
+  };
+
+  const hangUp = () => {
+    if (!socketRef.current?.connected || !user?._id || (!currentCall && !outgoingCall)) return;
+    console.log('Hanging up call');
+    const targetUserId = currentCall?.otherUser._id || outgoingCall?.to._id;
+    if (targetUserId) {
+      socketRef.current.emit('hangUp', { to: targetUserId });
+      console.log('Socket Emit: hangUp', { to: targetUserId });
+    }
+    setCurrentCall(null);
+    setOutgoingCall(null);
+    setCallState('idle');
+  };
+
+  const sendSignal = (targetUserId, signal) => {
+    if (!socketRef.current?.connected || !user?._id) return;
+    console.log('Sending signal to:', targetUserId);
+    console.log('Socket Emit: sendingSignal', { targetUserId, signal });
+    socketRef.current.emit('sendingSignal', { targetUserId, signal });
   };
 
   const value = {
@@ -139,7 +271,17 @@ export const SocketProvider = ({ children }) => {
     isConnected,
     emitEvent,
     isUserOnline: (userId) => onlineUsers.includes(userId),
-    onlineUsers
+    onlineUsers,
+    callState,
+    incomingCall,
+    outgoingCall,
+    currentCall,
+    callUser,
+    answerCall,
+    rejectCall,
+    hangUp,
+    sendSignal,
+    socketError // Expose socketError
   };
 
   return (

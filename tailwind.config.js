@@ -9,6 +9,15 @@ module.exports = {
       backdropBlur: {
         'custom': '8.5px',
       },
+      keyframes: {
+        skeleton: {
+          '0%': { backgroundColor: 'hsl(200, 20%, 80%)' },
+          '100%': { backgroundColor: 'hsl(200, 20%, 95%)' },
+        }
+      },
+      animation: {
+        skeleton: 'skeleton 1s linear infinite alternate',
+      }
     },
   },
   plugins: [],

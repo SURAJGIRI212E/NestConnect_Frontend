@@ -1,21 +1,35 @@
 import { IoClose } from "react-icons/io5";
+import { CiVideoOn,CiVideoOff } from "react-icons/ci";
 
 import useravator from "../../avator2.jpg";
 import { useSocket } from "../../context/SocketContext";
+import React, { useState, useEffect } from 'react';
+import LoadingShimmer, { SpinnerShimmer } from "../LoadingShimmer";
 
 
 export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
-  const { isUserOnline } = useSocket();
- 
+  const { isUserOnline, callUser } = useSocket();
+  const [warningMessage, setWarningMessage] = useState(null);
+  const [showShimmer, setShowShimmer] = useState(true);
+  const [shimmerClass, setShimmerClass] = useState('');
+
+  useEffect(() => {
+    if (warningMessage) {
+      const timer = setTimeout(() => {
+        setWarningMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [warningMessage]);
 
 
 
- 
+
 
   if (isLoading) return (
-    <div className="flex justify-between items-center border-b pb-2">
-      <p>Loading profile...</p>
-      <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+    <div className="flex justify-between items-center border-b pb-2 m-4">
+   <SpinnerShimmer/>
+      <button onClick={onClose} className="text-gray-500 hover:text-gray-600">
         <IoClose size="24px" />
       </button>
     </div>
@@ -23,7 +37,7 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
 
   if (error) return (
     <div className="flex justify-between items-center border-b pb-2">
-      <p className="text-red-500 bg-zinc-700">{error}</p>
+      <p className="text-red-500 ">{error}</p>
       <button onClick={onClose} className="text-blue-500  hover:text-red-700">
         <IoClose size="24px" />
       </button>
@@ -33,13 +47,7 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
   const isOnline = profile?.user?._id ? isUserOnline(profile.user._id) : false;
 
   return (
-    <>
-     
-    
-        
-       
-     
-      
+    <div className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl shadow-lg border border-white border-opacity-30 p-2">
       <div className="flex justify-between items-center border-b pb-2">
         <div className="flex items-center">
         
@@ -53,7 +61,7 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
               <div>
                 <h2 className="text-lg font-bold">
                   {profile.user.fullName || profile.user.username}
-                </h2> {isOnline?<h4>on</h4>:<h4>off</h4>}
+                </h2> 
                 <div className="text-sm text-gray-600">
                   {profile.followersCount !== undefined && 
                     <span>{profile.followersCount} Followers</span>}
@@ -66,17 +74,32 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-         
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <IoClose size="24px" />
-          </button>
+        <div className="flex items-center gap-2 p-2">
+           <button 
+             className={`hover:text-gray-700 ${isOnline ? 'text-green-500' : 'text-gray-500'}`} 
+             onClick={() => {
+               if (profile?.user) {
+                 if (isOnline) {
+                   callUser(profile.user);
+                 } else {
+                   setWarningMessage(`${profile.user.fullName || profile.user.username} is currently offline.`);
+                 }
+               }
+             }}>
+             {isOnline ? <CiVideoOn size="23px"/> : <CiVideoOff size="23px"/>}
+           </button>
+           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+             <IoClose size="24px" />
+           </button>
         </div>
       </div>
 
-      {/* Incoming call dialog */}
-     
-    </>
+      {warningMessage && (
+        <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white text-sm px-3 py-1 rounded-md shadow-lg z-50">
+          {warningMessage}
+        </div>
+      )}
+    </div>
   );
 };
 

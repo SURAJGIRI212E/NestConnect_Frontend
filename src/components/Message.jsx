@@ -167,11 +167,11 @@ export const Message = () => {
   };
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="sticky top-0  backdrop-blur-3xl bg-white/95 p-4">
+    <div className="flex flex-col w-full h-full bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg  shadow-lg border border-white border-opacity-30">
+      <div className="sticky top-0  backdrop-blur-3xl bg-blue/95 p-4 rounded-xl">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">Messages</h1>
-          <button onClick={() => setIsModalOpen(true)} className="text-xs px-3 py-2 bg-black text-white rounded-full hover:bg-blue-600">
+          <button onClick={() => setIsModalOpen(true)} className="text-xs px-3 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">
             New Message
           </button>
         </div>
@@ -200,7 +200,7 @@ export const Message = () => {
             {conversations.map(conversation => (
               <div 
                 key={conversation._id} 
-                className="flex items-center gap-2 p-4 bg-gray-100 rounded-lg cursor-pointer group"
+                className="flex items-center gap-2 p-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg  shadow-lg rounded-lg cursor-pointer group hover:bg-opacity-30 transition-colors duration-200"
                 onClick={() => handleConversationClick(conversation)}
               >
                 <img 
@@ -251,9 +251,9 @@ export const Message = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]">
-          <div className="bg-white rounded-2xl w-[600px] max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
+        <div className="fixed inset-0 bg-gradient-to-br from-zinc-200 to-blue-300  flex items-center justify-center z-[200]">
+          <div className="bg-white/50 bg-opacity-20 backdrop-filter backdrop-blur-lg  shadow-lg rounded-2xl w-[600px] max-h-[80vh] flex flex-col p-4 border border-white border-opacity-30">
+            <div className="flex items-center justify-between p-2 border-b border-white ">
               <div className="flex items-center gap-4">
                 <button 
                   onClick={handleCloseModal}
@@ -265,7 +265,7 @@ export const Message = () => {
               </div>
               <button 
                 onClick={handleNextClick}
-                className="px-4 py-1 bg-black text-white rounded-full disabled:opacity-50"
+                className="px-4 py-1 bg-blue-500 text-white rounded-full disabled:opacity-50"
                 disabled={selectedPeopleState.length === 0}
               >
                 Next
@@ -284,14 +284,14 @@ export const Message = () => {
                 ))}
               </div>
 
-              <div className="flex items-center gap-2 border-b pb-2">
+              <div className="flex items-center gap-2 border-b pb-2 border-white ">
                 <IoIosSearch size="16px" className="text-gray-400" />
                 <input 
                   type="search" 
                   value={modalSearchQuery} 
                   onChange={(e) => setModalSearchQuery(e.target.value)} 
                   placeholder="Search people" 
-                  className="w-full focus:outline-none"
+                  className="w-full focus:outline-none bg-transparent text-black"
                 />
               </div>
 
@@ -306,8 +306,8 @@ export const Message = () => {
 
               <div className="mt-2 max-h-[300px] overflow-y-auto">
                 {searchedUsers.map(person => (
-                  <div key={person._id} onClick={() => handlePersonSelect(person)} className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer">
-                    <img src={person.avatar || useravator} alt={person.fullName} className="w-12 h-12 rounded-full"/>
+                  <div key={person._id} onClick={() => handlePersonSelect(person)} className="flex items-center gap-2 p-3 hover:bg-white hover:bg-opacity-30 rounded-lg cursor-pointer transition-colors duration-200">
+                    <img src={person.avatar || useravator} alt={person.fullName} className="w-8 h-8 rounded-full"/>
                     <div>
                       <div className="font-bold">{person.fullName}</div>
                       <div className="text-gray-500 text-sm">{person.username}</div>

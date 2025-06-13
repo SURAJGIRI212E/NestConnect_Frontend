@@ -40,7 +40,7 @@ const Bookmarks = () => {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="sticky top-0 z-[102] backdrop-blur-3xl bg-white/95 p-4">
+      <div className="sticky top-0  backdrop-blur-3xl bg-gradient-to-br from-zinc-200 to-blue-300 rounded-3xl p-4">
         <h1 className="text-xl font-bold mb-4">Bookmarks</h1>
         
         <div className="flex items-center py-2 px-4 text-sm bg-gray-100 rounded-full border border-transparent 

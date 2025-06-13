@@ -41,9 +41,9 @@ export const Explore = ({ myfeedRef }) => {
   return (
     <div className="flex flex-col w-full">
       <div ref={myfeedRef} className="flex-1">
-        <div className="sticky top-0 z-[102] backdrop-blur-3xl bg-white/95 p-4">
-          <div className="flex items-center py-2 px-4 text-sm bg-gray-100 rounded-full border border-transparent 
-            focus-within:border-blue-500 focus-within:bg-inherit focus-within:text-blue-500">
+        <div className="sticky top-0   p-4">
+          <div className="flex items-center py-2 px-4 text-sm bg-white shadow-2xl rounded-full border border-transparent 
+            focus-within:border-black/50">
             <IoIosSearch size="18px"/>
             <input 
               type="search" 

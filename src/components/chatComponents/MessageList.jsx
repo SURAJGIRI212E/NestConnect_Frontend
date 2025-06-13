@@ -28,8 +28,8 @@ export const MessageList = ({
   isTyping,conversationId
 }) => {
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden mt-4 scrollbar">
-      <div className="flex flex-col">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden mt-4 mb-4 scrollbar">
+      <div className="flex flex-col pb-8">
         {messages.map((message, index) => {
           const messageDate = new Date(message.createdAt);
           const previousMessageDate = index > 0 ? new Date(messages[index - 1].createdAt) : null;
@@ -38,7 +38,7 @@ export const MessageList = ({
           return (
             <React.Fragment key={message._id}>
               {showDateSeparator && (
-                <div className="text-center text-gray-500 text-xs my-4 sticky top-0 bg-white z-10">
+                <div className="text-center text-gray-800 text-xs my-2 sticky top-0 bg-white/35 backdrop-blur-md z-10">
                   {formatMessageDate(message.createdAt)}
                 </div>
               )}
@@ -51,8 +51,8 @@ export const MessageList = ({
               >
                 <div className={`rounded-lg max-w-64 p-2 relative group ${
                   message.senderId._id === currentUserId 
-                    ? 'bg-gray-200 text-black' 
-                    : 'bg-blue-500 text-white mr-10'
+                    ? 'bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg text-black' 
+                    : 'bg-blue-500 text-white mr-10 backdrop-filter backdrop-blur-lg'
                 }`}>
                   {message.senderId._id === currentUserId && hoveredMessage === message._id && (
                     <button
@@ -95,9 +95,10 @@ export const MessageList = ({
         </div>
       </div>
         )}
-
-        <div ref={messagesEndRef} />
+ <div ref={messagesEndRef} />
+        
       </div>
+     
     </div>
   );
 };

@@ -5,7 +5,7 @@ import useHover from "../hooks/userHover";
 import { MiniProfileCard } from "./MiniProfileCard";
 
 export const WhoToFollow = () => {
-  const { isHovering, position, handleMouseEnter, handleMouseLeave } = useHover();
+  const { isHovering, position, handleMouseEnter, handleMouseLeave, clearHideTimeout } = useHover();
   const cardRef = useRef(null); // Ref for the modal
   const profileRefs = useRef([]); // Refs for each profile suggestion
 
@@ -22,6 +22,15 @@ export const WhoToFollow = () => {
     }
   };
 
+  const handleCardMouseEnter = () => {
+    clearHideTimeout();
+  };
+
+  const handleProfileMouseEnter = (e, index) => {
+    clearHideTimeout();
+    handleMouseEnter(e, index);
+  };
+
   const suggestions = [
     { name: "Vijay Lokapally", handle: "@vijaylokapally", verified: false },
     { name: "Shashank Yagnik", handle: "@YagnikShashank", verified: false },
@@ -29,37 +38,37 @@ export const WhoToFollow = () => {
   ];
 
   return (
-    <div className="cursor-pointer mt-4 border rounded-lg p-0 lg:p-2">
-      <h2 className="text-lg font-bold mb-4">Who to follow</h2>
+    <div className="min-w-72 cursor-pointer p-2 mt-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl shadow-lg border border-white border-opacity-30">
+      <h2 className="text-xl font-bold mb-4 text-gray-800">Who to follow</h2>
       {suggestions.map((user, index) => (
         <div
           key={index}
-          className="flex items-center justify-between py-2 px-0 md:px-1 hover:bg-gray-100"
+          className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-white hover:bg-opacity-30 transition duration-200"
           ref={(el) => (profileRefs.current[index] = el)} // Attach refs dynamically
-          onMouseEnter={(e) => handleMouseEnter(e, index)}
+          onMouseEnter={(e) => handleProfileMouseEnter(e, index)}
           onMouseLeave={handleMouseLeaveWithRef}
         >
           <div className="flex items-center">
             <img
               src={useravator}
               alt="dp"
-              className="w-8 h-8 rounded-full mr-1"
+              className="w-10 h-10 rounded-full mr-3 border-2 border-white shadow-sm"
             />
             <div>
               <div className="flex items-center">
-                <span className="font-bold text-xs">{user.name}{user.verified && (
+                <span className="font-bold text-sm text-gray-800">{user.name}{user.verified && (
                   <img
-                    className="inline w-[13px] h-[13px]"
+                    className="inline w-[13px] h-[13px] ml-1"
                     src={badge}
                     alt="verified"
                   />
                 )}</span>
                 
               </div>
-              <div className="text-gray-500 text-xs">{user.handle}</div>
+              <div className="text-gray-600 text-xs">{user.handle}</div>
             </div>
           </div>
-          <button className="bg-black text-[10px] text-white rounded-full px-3 lg:px-4 py-2">
+          <button className="bg-blue-500  text-white rounded-full px-4 py-2 text-xs font-semibold hover:bg-blue-600 transition duration-200">
             Follow
           </button>
         </div>
@@ -71,9 +80,10 @@ export const WhoToFollow = () => {
           top={position.top}
           left={position.left}
           onMouseLeave={handleMouseLeaveWithRef}
+          onMouseEnter={handleCardMouseEnter}
         />
       )}
-      <a href="/#" className="block text-blue-400 text-sm mt-2">
+      <a href="/#" className="block text-blue-500 text-sm mt-4 hover:underline">
         Show more
       </a>
     </div>

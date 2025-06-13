@@ -2,37 +2,67 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './components/Home';
 import { Login } from './components/Login';
 import { Premium } from './components/Premium';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import LoadingShimmer from './components/LoadingShimmer';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const [showShimmer, setShowShimmer] = useState(true);
+  const [shimmerClass, setShimmerClass] = useState('');
+  const [contentClass, setContentClass] = useState('');
 
-  if (loading) {
-    return <div>Loading...</div>;
+  useEffect(() => {
+    if (!loading) {
+      setShimmerClass('animate-fadeOut');
+      const timer = setTimeout(() => {
+        setShowShimmer(false);
+        setContentClass('animate-fadeIn');
+      }, 500); // Duration of fadeOut animation
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  if (showShimmer) {
+    return <LoadingShimmer className={shimmerClass}/>;
   }
 
   if (!user) {
     return <Navigate to="/login" />;
   }
 
-  return children;
+  return <div className={contentClass}>{children}</div>;
 };
 
 // Public Route component (only accessible when not logged in)
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const [showShimmer, setShowShimmer] = useState(true);
+  const [shimmerClass, setShimmerClass] = useState('');
+  const [contentClass, setContentClass] = useState('');
 
-  if (loading) {
-    return <div>Loading...</div>;
+  useEffect(() => {
+    if (!loading) {
+      setShimmerClass('animate-fadeOut');
+      const timer = setTimeout(() => {
+        setShowShimmer(false);
+        setContentClass('animate-fadeIn');
+      }, 500); // Duration of fadeOut animation
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  if (showShimmer) {
+    return <LoadingShimmer className={shimmerClass} type="login-page" />;
   }
 
   if (user) {
     return <Navigate to="/home" />;
   }
 
-  return children;
+  return <div className={contentClass}>{children}</div>;
 };
 
 function App() {
@@ -40,7 +70,7 @@ function App() {
     <AuthProvider>
       <Router>
         <SocketProvider>
-          <div className="App no-scrollbar">
+          <div className="App no-scrollbar overflow-auto">
             <Routes>
               <Route 
                 path="/login" 

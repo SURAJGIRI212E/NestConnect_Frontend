@@ -4,37 +4,51 @@ function useHover() {
   const [isHovering, setIsHovering] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [activeId, setActiveId] = useState(null);
-  const timeoutId = useRef(null); // Ref to track the timeout
+  const hideTimeoutId = useRef(null); // Ref to track the timeout for hiding
+  const showTimeoutId = useRef(null); // Ref to track the timeout for showing
+
+  const clearHideTimeout = useCallback(() => {
+    if (hideTimeoutId.current) {
+      clearTimeout(hideTimeoutId.current);
+      hideTimeoutId.current = null;
+    }
+  }, []);
+
+  const clearShowTimeout = useCallback(() => {
+    if (showTimeoutId.current) {
+      clearTimeout(showTimeoutId.current);
+      showTimeoutId.current = null;
+    }
+  }, []);
 
   const handleMouseEnter = useCallback((e, id) => {
-    // Clear any existing timeout
-    if (timeoutId.current) {
-      clearTimeout(timeoutId.current);
-    }
+    clearHideTimeout(); // Clear any existing hide timeout
+    clearShowTimeout(); // Clear any existing show timeout
 
     const rect = e.currentTarget.getBoundingClientRect();
-    timeoutId.current = setTimeout(() => {
+
+    showTimeoutId.current = setTimeout(() => {
       setPosition({
-        top: rect.top + window.scrollY + rect.height, // Position below the element
-        left: rect.left + window.scrollX, // Align with the element
+        top: rect.top , // Position below the element
+        left: 0, // Align with the element
       });
       setActiveId(id); // Set the active modal ID
-      setIsHovering(true); // Show the modal
-      // console.log("after 2 second",id);
-    }, 1000); // Delay of 2 seconds
-  }, []);
+      setIsHovering(true); // Show the modal after delay
+    }, 1000); // Delay of 1 second
+  }, [clearHideTimeout, clearShowTimeout]);
 
   const handleMouseLeave = useCallback(() => {
-    // Clear the timeout to prevent delayed activation
-    if (timeoutId.current) {
-      clearTimeout(timeoutId.current);
-      timeoutId.current = null;
+    clearShowTimeout(); // Clear the show timeout to prevent delayed activation
+    if (hideTimeoutId.current) {
+      clearTimeout(hideTimeoutId.current);
     }
-    setIsHovering(false); // Hide the modal
-    setActiveId(null); // Reset active modal ID
-  }, []);
+    hideTimeoutId.current = setTimeout(() => {
+      setIsHovering(false); // Hide the modal
+      setActiveId(null); // Reset active modal ID
+    }, 300); // Delay of 300ms before hiding
+  }, [clearShowTimeout]);
 
-  return { isHovering, position, activeId, handleMouseEnter, handleMouseLeave };
+  return { isHovering, position, activeId, handleMouseEnter, handleMouseLeave, clearHideTimeout };
 }
 
 export default useHover;

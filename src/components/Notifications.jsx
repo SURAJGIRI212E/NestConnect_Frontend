@@ -21,7 +21,7 @@ export const Notifications = () => {
       type: 'comment',
       user: 'Jane Smith',
       avatar: useravator, 
-      content: 'commented on your post: "Great insight!"',
+      content: 'commented on your post: "Great insight!" Stanton said.',
       time: '4h',
       icon: <FaRegComment className="text-blue-500" size="18px" />
     },
@@ -49,20 +49,20 @@ export const Notifications = () => {
   };
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="sticky top-0 z-[102] backdrop-blur-3xl bg-white/95 p-4">
-        <h1 className="text-xl font-bold mb-4">Notifications</h1>
+    <div className="flex flex-col w-[90%] bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl shadow-lg border border-white border-opacity-30 p-2 m-4">
+      <div className="sticky top-0  backdrop-blur-3xl bg-gradient-to-br from-zinc-200 to-blue-300 rounded-3xl shadow-lg p-2 ">
+        <h1 className="text-xl font-bold mb-4 text-gray-900">Notifications</h1>
         
-        <div className="flex border-b">
+        <div className="flex border-b border-white border-opacity-30">
           <button 
             onClick={() => setActiveTab('all')}
-            className={`flex-1 py-3 text-sm font-medium ${activeTab === 'all' ? 'border-b-2 border-blue-500' : ''}`}
+            className={`flex-1 py-3 text-sm font-semibold text-gray-800 ${activeTab === 'all' ? 'border-b-2 border-blue-500' : 'hover:bg-white hover:bg-opacity-30 transition duration-200'}`}
           >
             All
           </button>
           <button 
             onClick={() => setActiveTab('mention')}
-            className={`flex-1 py-3 text-sm font-medium ${activeTab === 'mention' ? 'border-b-2 border-blue-500' : ''}`}
+            className={`flex-1 py-3 text-sm font-semibold text-gray-800 ${activeTab === 'mention' ? 'border-b-2 border-blue-500' : 'hover:bg-white hover:bg-opacity-30 transition duration-200'}`}
           >
             Mentions
           </button>
@@ -71,14 +71,14 @@ export const Notifications = () => {
 
       <div className="flex flex-col">
         {filterNotifications(activeTab).map((notification, index) => (
-          <div key={index} className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer border-b">
-            <div className="w-8">{notification.icon}</div>
-            <div className="w-10 h-10">
-              <img src={notification.avatar} alt={notification.user} className="rounded-full w-full h-full object-cover" />
+          <div key={index} className="flex items-center gap-1 p-2 hover:bg-white hover:bg-opacity-30 transition duration-200 cursor-pointer border-b border-zinc-500 border-opacity-30 last:border-b-0">
+            <div className="w-8 flex-shrink-0">{notification.icon}</div>
+            <div className="w-10 h-10 flex-shrink-0">
+              <img src={notification.avatar} alt={notification.user} className="rounded-full w-8 h-8 object-cover border-2 border-white shadow-sm" />
             </div>
             <div className="flex-1">
-              <span className="font-bold">{notification.user}</span>{' '}
-              <span className="text-xs text-gray-600">{notification.content}</span>
+              <span className="font-bold text-gray-800">{notification.user}</span>{' '}
+              <span className="text-sm text-gray-700">{notification.content}</span>
               <div className="text-xs text-gray-500">{notification.time}</div>
             </div>
           </div>

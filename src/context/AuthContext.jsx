@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
     checkAuthStatus();
   }, []);
 
@@ -42,15 +41,11 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
-      // Assuming /api/auth/login returns { status: 'success', userid: '...', username: '...', ... }
-      if (response.data.status === 'success') {
-        // Use userid and username directly from the login response
+      if (response.data.status === 'success') {      
         setUser({ _id: response.data.userid, username: response.data.username }); // Set minimal user info
         localStorage.setItem('userId', response.data.userid);
         return { success: true };
       } else {
-         // This case should ideally not be reached for typical API error responses (4xx status)
-         // But as a fallback, handle if server returns 200 with status != 'success'
          return {
            success: false,
            error: response.data.message || 'Login failed with unexpected status'
@@ -58,7 +53,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Extract specific error message from backend response
+      // Extracting specific error message from backend response
       const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
 
       return {
@@ -74,7 +69,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Always clear local state
       setUser(null);
       localStorage.removeItem('userId');
     }

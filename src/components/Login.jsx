@@ -42,14 +42,14 @@ export const Login = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="p-8 w-96">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-zinc-200 to-blue-400">
+      <div className="p-8 w-96 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl shadow-lg border border-white border-opacity-30">
         <div className="flex justify-center mb-6">
           <img src={logo} alt="X Logo" className="w-10" />
         </div>
-        <h1 className="text-2xl font-bold mb-6 text-center">Sign in to Twitter</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign in to Twitter</h1>
         {error && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
+          <div className="mb-4 p-2 bg-red-400 bg-opacity-30 text-red-800 rounded-md">
             {error}
           </div>
         )}
@@ -63,7 +63,7 @@ export const Login = () => {
               placeholder="Email"
               required
               disabled={loading}
-              className="w-full px-4 py-2 border border-[rgb(239, 243, 244)] rounded-md focus:outline-none disabled:opacity-50"
+              className="w-full px-4 py-2 border border-white border-opacity-30 rounded-md bg-white bg-opacity-10 text-gray-800 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-60 disabled:opacity-50"
             />
           </div>
           <div>
@@ -75,24 +75,28 @@ export const Login = () => {
               placeholder="Password"
               required
               disabled={loading}
-              className="w-full px-4 py-2 border border-[rgb(239, 243, 244)] rounded-md focus:outline-none disabled:opacity-50"
+              className="w-full px-4 py-2 border border-white border-opacity-30 rounded-md bg-white bg-opacity-10 text-gray-800 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-60 disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#171a1c] text-white py-2 rounded-full font-semibold hover:bg-[#24272a] transition duration-200 disabled:opacity-50"
+            className="w-full bg-blue-500 text-white py-2 rounded-full font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50 shadow-md"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
         <div className="mt-4 text-center">
-          <button className="text-[#171a1c] hover:underline bg-transparent border-none cursor-pointer">Forgot password?</button>
+          <button className="text-blue-700 hover:underline bg-transparent border-none cursor-pointer">
+            Forgot password?
+          </button>
         </div>
         <div className="mt-6 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-700">
             Don't have an account?{" "}
-            <button className="text-[#171a1c] hover:underline bg-transparent border-none cursor-pointer">Sign up</button>
+            <button className="text-blue-700 hover:underline bg-transparent border-none cursor-pointer">
+              Sign up
+            </button>
           </p>
         </div>
       </div>

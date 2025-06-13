@@ -23,8 +23,8 @@ export const useChat = () => {
   const messagesEndRef = useRef(null);
   const dispatch = useDispatch();
   const { selectedPeople, conversations } = useSelector(state => state.chat);
-  const { socket, emitEvent, isUserOnline } = useSocket();
-  // Mark messages as read when viewing conversation
+  const { socket, emitEvent, isUserOnline, socketError } = useSocket();
+
   useEffect(() => {
     if (!conversationId || !socket?.connected) return;
 
@@ -42,7 +42,7 @@ export const useChat = () => {
     markMessagesAsRead();
 
     // Set up intersection observer for message visibility
-    const observer = new IntersectionObserver(
+       const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some(entry => entry.isIntersecting)) {
           markMessagesAsRead();
@@ -116,11 +116,14 @@ export const useChat = () => {
         setIsLoadingProfile(false);
       }
     };    getConversation();
-  }, [selectedPeople, isUserOnline, conversations]);
+  }, [selectedPeople, conversations]);
 
   // Listen to socket events
   useEffect(() => {
     if (!socket) return;
+
+    // Clear profileError when new socket events occur or conversation changes
+    setProfileError(null);
 
     const handleReceiveMessage = (data) => {
       if (data.conversationId === conversationId) {
@@ -159,6 +162,12 @@ export const useChat = () => {
       socket.off('stopTyping');
     };
   }, [socket, conversationId]);
+
+  useEffect(() => {
+    if (socketError) {
+      setProfileError(socketError);
+    }
+  }, [socketError]);
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -271,6 +280,7 @@ export const useChat = () => {
     removeImage,
     formatMessageTime,
     fileInputRef,
-    messagesEndRef
+    messagesEndRef,
+    socketError
   };
 };

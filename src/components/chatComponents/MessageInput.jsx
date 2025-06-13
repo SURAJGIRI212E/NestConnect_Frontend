@@ -19,10 +19,10 @@ export const MessageInput = ({
       e.preventDefault();
       onSend();
     }} 
-    className="flex flex-col mt-4 mb-2">
+    className="flex flex-col  mb-2">
       {/* Image Preview */}
       {selectedImages.length > 0 && (
-        <div className="flex gap-2 p-2 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 p-2 overflow-x-auto no-scrollbar bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-lg shadow-inner border border-white border-opacity-30 mb-2">
           {selectedImages.map((image, index) => (
             <div key={index} className="relative">
               <img
@@ -68,7 +68,7 @@ export const MessageInput = ({
             onTyping();
           }}
           placeholder="Type a message..."
-          className="flex-1 p-2 border rounded-full mx-1 focus:outline-none focus:border-blue-500"
+          className="flex-1 p-2 border rounded-full mx-1 focus:outline-none focus:border-blue-500 bg-white bg-opacity-30 backdrop-filter backdrop-blur-lg"
           disabled={disabled || isUploading}
         />
 
