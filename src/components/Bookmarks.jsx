@@ -1,42 +1,21 @@
 import React, { useState } from 'react';
 import { IoIosSearch } from "react-icons/io";
+import { useGetUserBookmarksQuery } from '../hooks/usePostCalls';
+import { FeedPostShimmer } from './LoadingShimmer';
 import { Tweet } from '../minicomponents/Tweet';
-import useravator from "../avator2.jpg";
 
 const Bookmarks = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [bookmarkedTweets, setBookmarkedTweets] = useState([
-    {
-      id: 1,
-      author: 'John Doe',
-      username: '@johndoe',
-      content: 'This is a bookmarked tweet',
-      timestamp: '2h',
-      likes: 10,
-      comments: 5,
-      retweets: 3
-    },
-    {
-      id: 2, 
-      author: 'Jane Smith',
-      username: '@janesmith',
-      content: 'Another bookmarked tweet',
-      timestamp: '5h',
-      likes: 20,
-      comments: 8,
-      retweets: 12
-    }
-  ]);
+  
+  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery();
+  const bookmarks = bookmarksData?.posts || [];
 
-  const filteredBookmarks = bookmarkedTweets.filter(tweet => {
-    const searchLower = searchQuery.toLowerCase();
-    if (!searchLower) return bookmarkedTweets;
-    return (
-      tweet.content.toLowerCase().includes(searchLower) ||
-      tweet.author.toLowerCase().includes(searchLower) ||
-      tweet.username.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter bookmarks based on search query
+  const filteredBookmarks = bookmarks.filter(tweet =>
+    tweet.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tweet.ownerid?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tweet.ownerid?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col w-full">
@@ -57,15 +36,17 @@ const Bookmarks = () => {
       </div>
 
       <div className="flex-1">
-        {filteredBookmarks.length > 0 ? (
-          filteredBookmarks.map(tweet => (
-            <Tweet key={tweet.id} tweet={tweet} isBookmarked={true} />
-          ))
-        ) : (
+        {isLoadingBookmarks && ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />))}
+        {isErrorBookmarks && <div className="p-4 text-center text-red-500">Error loading bookmarks: {bookmarksError.message}</div>}
+        {!isLoadingBookmarks && !isErrorBookmarks && filteredBookmarks.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
-            <h2 className="text-xl font-bold mb-2">You haven't added any Tweets to your Bookmarks yet</h2>
-            <p className="text-gray-500">When you do, they'll show up here.</p>
+            <h2 className="text-xl font-bold mb-2">No bookmarks found.</h2>
+            <p className="text-gray-500">Start bookmarking posts to see them here!</p>
           </div>
+        ) : (
+          !isLoadingBookmarks && filteredBookmarks.map(tweet => (
+            <Tweet key={tweet._id} tweet={tweet} isBookmarked={true} />
+          ))
         )}
       </div>
     </div>

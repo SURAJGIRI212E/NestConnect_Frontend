@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from '../../context/SocketContext';
 import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaShareSquare, FaStopCircle } from 'react-icons/fa';
 import { HiOutlinePhoneMissedCall } from "react-icons/hi"
@@ -21,6 +21,9 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
   const [selectedVideoDevice, setSelectedVideoDevice] = useState(null);
   const [showAudioDevices, setShowAudioDevices] = useState(false);
   const [showVideoDevices, setShowVideoDevices] = useState(false);
+  const pendingCandidatesRef = useRef([]);
+  // NEW: Ref to track if WebRTC setup is currently active
+  const callSetupActiveRef = useRef(false);
 
   const { socket, socketError } = useSocket();
 
@@ -37,10 +40,6 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
-        console.log(`Audio ${audioTrack.enabled ? 'unmuted' : 'muted'}`);
-      }
-      else{
-        console.log("not permission")
       }
     }
   };
@@ -52,10 +51,7 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCameraOff(!videoTrack.enabled);
-        console.log(`Camera ${videoTrack.enabled ? 'on' : 'off'}`);
       }
-      else
-     { console.log("not camera allowed")}
     }
   };
 
@@ -67,8 +63,6 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
       const videoInputs = devices.filter(device => device.kind === 'videoinput');
       setAudioDevices(audioInputs);
       setVideoDevices(videoInputs);
-      console.log('Audio Devices:', audioInputs);
-      console.log('Video Devices:', videoInputs);
     } catch (error) {
       console.error('Error enumerating devices:', error);
     }
@@ -76,39 +70,28 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
 
   // Function to switch audio device
   const switchAudioDevice = async (deviceId) => {
-    if (!peerConnectionRef.current || !localStreamRef.current) return;
-
+    if (!peerConnectionRef.current || !localStreamRef.current) {
+       return;
+    }
     try {
-      // Get the current audio track and stop it
       const currentAudioTrack = localStreamRef.current.getAudioTracks()[0];
       if (currentAudioTrack) {
         currentAudioTrack.stop();
       }
-
-      // Get a new stream with the selected audio device
       const newStream = await navigator.mediaDevices.getUserMedia({
         audio: { deviceId: { exact: deviceId } },
-        video: false, // Don't request video here
+        video: false,
       });
       const newAudioTrack = newStream.getAudioTracks()[0];
-
-      // Find the audio sender and replace the track
       const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'audio');
       if (sender) {
         await sender.replaceTrack(newAudioTrack);
-        console.log('Switched audio device to:', deviceId);
-
-        // Update the local stream reference with the new audio track
-        // Note: This is a bit tricky. Replacing the track on the sender updates what's sent, but the local stream displayed needs updating too.
-        // A more robust approach might involve creating a new combined stream or carefully managing tracks.
-        // For simplicity here, we'll stop the old stream and add the new track to a new local stream. This might cause a brief visual glitch.
         const videoTrack = localStreamRef.current.getVideoTracks()[0];
         const newLocalStream = new MediaStream();
         newLocalStream.addTrack(newAudioTrack);
         if(videoTrack) newLocalStream.addTrack(videoTrack);
         localStreamRef.current = newLocalStream;
-        localVideoRef.current.srcObject = newLocalStream; // Update local video display
-
+        localVideoRef.current.srcObject = newLocalStream;
         setSelectedAudioDevice(deviceId);
       } else {
         console.error('Audio sender not found.');
@@ -120,94 +103,84 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
 
   // Function to switch video device
   const switchVideoDevice = async (deviceId) => {
-    if (!peerConnectionRef.current || !localStreamRef.current) return;
+    if (!peerConnectionRef.current || !localStreamRef.current) {
+       return;
+    }
     if (isScreenSharing) {
-      console.warn('Cannot switch video device while screen sharing.');
       setWarningMessage('Stop screen sharing before switching camera.');
       return;
     }
-
     try {
-      // Get the current video track and stop it
       const currentVideoTrack = localStreamRef.current.getVideoTracks()[0];
       if (currentVideoTrack) {
         currentVideoTrack.stop();
       }
-
-      // Get a new stream with the selected video device
+      await new Promise(resolve => setTimeout(resolve, 50));
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { deviceId: { exact: deviceId } },
-        audio: false, // Don't request audio here
+        audio: false,
       });
       const newVideoTrack = newStream.getVideoTracks()[0];
-
-      // Find the video sender and replace the track
       const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
       if (sender) {
         await sender.replaceTrack(newVideoTrack);
-        console.log('Switched video device to:', deviceId);
-
-        // Update the local stream reference and local video display with the new video track
         const audioTrack = localStreamRef.current.getAudioTracks()[0];
         const newLocalStream = new MediaStream();
         newLocalStream.addTrack(newVideoTrack);
         if(audioTrack) newLocalStream.addTrack(audioTrack);
         localStreamRef.current = newLocalStream;
-        localVideoRef.current.srcObject = newLocalStream; // Update local video display
-
+        localVideoRef.current.srcObject = newLocalStream;
         setSelectedVideoDevice(deviceId);
-        setIsCameraOff(false); // Ensure camera is not marked as off after switching
+        setIsCameraOff(false);
       } else {
         console.error('Video sender not found.');
       }
     } catch (error) {
       console.error('Error switching video device:', error);
-      // Attempt to get default stream back if switching fails
-      setWarningMessage(`Failed to switch video device. Error: ${error.name}. It might be in use by another application.`);
-      try {
-        const defaultStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!localStreamRef.current?.getAudioTracks().length }); // Request audio if it was active
-        const defaultVideoTrack = defaultStream.getVideoTracks()[0];
-        const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
-        if(sender && defaultVideoTrack) {
-          await sender.replaceTrack(defaultVideoTrack);
-          const audioTrack = localStreamRef.current?.getAudioTracks()[0];
-          const newLocalStream = new MediaStream();
-          newLocalStream.addTrack(defaultVideoTrack);
-          if(audioTrack) newLocalStream.addTrack(audioTrack);
-          localStreamRef.current = newLocalStream;
-          localVideoRef.current.srcObject = newLocalStream;
-          setSelectedVideoDevice(null); // Reset to default
-          setIsCameraOff(false);
-          console.log('Switched back to default video device.');
-        } else if (localStreamRef.current) {
-          localStreamRef.current.getVideoTracks().forEach(track => track.stop());
-          localStreamRef.current = null; // Clear stream if default couldn't be obtained
-          localVideoRef.current.srcObject = null;
-          setSelectedVideoDevice(null);
-          setIsCameraOff(true);
-        }
-      } catch (defaultError) {
-        console.error('Error switching back to default video device:', defaultError);
-        if (localStreamRef.current) {
-          localStreamRef.current.getVideoTracks().forEach(track => track.stop());
-          localStreamRef.current = null; // Clear stream if default couldn't be obtained
-          localVideoRef.current.srcObject = null;
-          setSelectedVideoDevice(null);
-          setIsCameraOff(true);
-        }
-      }
+      setWarningMessage(`Failed to switch video device. Error: ${error.name}. This often means the device is busy or permissions were denied. Please ensure no other applications are using the camera and try again.`);
+       try {
+           const defaultStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!localStreamRef.current?.getAudioTracks().length });
+           const defaultVideoTrack = defaultStream.getVideoTracks()[0];
+           const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
+            if(sender && defaultVideoTrack) {
+                await sender.replaceTrack(defaultVideoTrack);
+                 const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+                 const newLocalStream = new MediaStream();
+                 newLocalStream.addTrack(defaultVideoTrack);
+                 if(audioTrack) newLocalStream.addTrack(audioTrack);
+                 localStreamRef.current = newLocalStream;
+                 localVideoRef.current.srcObject = newLocalStream;
+                 setSelectedVideoDevice(null);
+                 setIsCameraOff(false);
+            } else if (localStreamRef.current) {
+                 localStreamRef.current.getVideoTracks().forEach(track => track.stop());
+                 localStreamRef.current = null;
+                 localVideoRef.current.srcObject = null;
+                 setSelectedVideoDevice(null);
+                 setIsCameraOff(true);
+            }
+       } catch (defaultError) {
+        console.error('Error switching back to default video device during fallback:', defaultError);
+            if (localStreamRef.current) {
+                 localStreamRef.current.getVideoTracks().forEach(track => track.stop());
+                 localStreamRef.current = null;
+                 localVideoRef.current.srcObject = null;
+                 setSelectedVideoDevice(null);
+                 setIsCameraOff(true);
+            }
+       }
     }
   };
 
   // Function to start screen sharing
   const startScreenShare = async () => {
-    console.log("click on start screen .....")
-    if (isScreenSharing || !peerConnectionRef.current) return;
+    if (isScreenSharing || !peerConnectionRef.current) {
+       return;
+    }
     if (otherUserIsSharing) {
       setWarningMessage("Only one user can share screen at a time.");
       return;
     }
-
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({   video: true,
       audio: {
@@ -220,25 +193,16 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
       selfBrowserSurface: "exclude",
      });
       const screenTrack = screenStream.getVideoTracks()[0];
-
-      // Replace the current video track with the screen share track
       const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
       if (sender) {
         await sender.replaceTrack(screenTrack);
         setIsScreenSharing(true);
-        console.log('Started screen sharing');
-
-        // Listen for screen share end (e.g., user clicks browser's stop sharing button)
         screenTrack.onended = () => {
           stopScreenShare();
         };
-
-        // Stop local video stream tracks if screen sharing starts
         if (localStreamRef.current) {
            localStreamRef.current.getVideoTracks().forEach(track => track.stop());
         }
-
-        // Emit signal that screen sharing has started
         sendSignal(currentCall.otherUser._id, { type: 'userStartedScreenShare' });
       }
     } catch (error) {
@@ -248,195 +212,254 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
 
   // Function to stop screen sharing
   const stopScreenShare = async () => {
-    if (!isScreenSharing || !peerConnectionRef.current) return;
-
-    // Stop the screen share track
+    if (!isScreenSharing || !peerConnectionRef.current) {
+       return;
+    }
     const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
     if (sender && sender.track) {
        sender.track.stop();
     }
-
-    // Get user media again to switch back to camera
     try {
         const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         const cameraTrack = cameraStream.getVideoTracks()[0];
         if(sender) {
             await sender.replaceTrack(cameraTrack);
         }
-        // Update local video ref to show camera feed again
         localVideoRef.current.srcObject = cameraStream;
-        localStreamRef.current = cameraStream; // Update the local stream ref
-
+        localStreamRef.current = cameraStream;
         setIsScreenSharing(false);
-        console.log('Stopped screen sharing and switched back to camera');
-
-        // Emit signal that screen sharing has stopped
         sendSignal(currentCall.otherUser._id, { type: 'userStoppedScreenShare' });
-
     } catch (error) {
-        console.error('Error switching back to camera after screen sharing:', error);
-        // If cannot get camera access again, just stop screen sharing and show nothing or a placeholder
+      console.error('Error switching back to camera after screen sharing:', error);
          setIsScreenSharing(false);
          if (localStreamRef.current) {
            localStreamRef.current.getTracks().forEach(track => track.stop());
            localStreamRef.current = null;
            localVideoRef.current.srcObject = null;
          }
-
-        // Emit signal that screen sharing has stopped even if switching back to camera failed
         sendSignal(currentCall.otherUser._id, { type: 'userStoppedScreenShare' });
     }
   };
 
   useEffect(() => {
-    // Get user media and set up peer connection
+    // Clean up everything when currentCall changes or on unmount
+    // Capture refs at the start of the effect for safe cleanup
+    const localVideo = localVideoRef.current;
+    const remoteVideo = remoteVideoRef.current;
+    return () => {
+      console.log(`[${new Date().toLocaleTimeString()}] --- Initiating Full Cleanup (useEffect) ---`);
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+        localStreamRef.current = null;
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.ontrack = null;
+        peerConnectionRef.current.onicecandidate = null;
+        peerConnectionRef.current.oniceconnectionstatechange = null;
+        peerConnectionRef.current.onsignalingstatechange = null;
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      if (remoteVideo) {
+        remoteVideo.srcObject = null;
+      }
+      if (localVideo) {
+        localVideo.srcObject = null;
+      }
+      pendingCandidatesRef.current = [];
+      if (socket) {
+        socket.off('returningSignal');
+      }
+      setIsMuted(false);
+      setIsCameraOff(false);
+      setIsScreenSharing(false);
+      setOtherUserIsSharing(false);
+      setWarningMessage(null);
+      setAudioDevices([]);
+      setVideoDevices([]);
+      setSelectedAudioDevice(null);
+      setSelectedVideoDevice(null);
+      setShowAudioDevices(false);
+      setShowVideoDevices(false);
+    };
+  }, [currentCall, socket]);
+
+  // Memoize the signal handler to avoid re-registering on every render
+  const handleReturningSignal = useCallback(async ({ signal }) => {
+    if (!peerConnectionRef.current || !callSetupActiveRef.current) {
+      return;
+    }
+    const pc = peerConnectionRef.current;
+    try {
+      if (signal.type === 'userStartedScreenShare') {
+        setOtherUserIsSharing(true);
+        setWarningMessage(null);
+      } else if (signal.type === 'userStoppedScreenShare') {
+        setOtherUserIsSharing(false);
+      } else if (signal.offer) {
+        if (pc.signalingState === 'stable') {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          sendSignal(currentCall.otherUser._id, { answer: answer });
+          while (pendingCandidatesRef.current.length > 0) {
+            const candidate = pendingCandidatesRef.current.shift();
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+              console.warn('Failed to add ICE candidate after offer:', err);
+            }
+          }
+        } else {
+          if (currentCall) {
+            sendSignal(currentCall.otherUser._id, { type: 'reset' });
+          }
+        }
+      } else if (signal.answer) {
+        if (pc.signalingState === 'have-local-offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+          while (pendingCandidatesRef.current.length > 0) {
+            const candidate = pendingCandidatesRef.current.shift();
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+              console.warn('Failed to add ICE candidate after answer:', err);
+            }
+          }
+        }
+      } else if (signal.ice) {
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.ice));
+          } catch (err) {
+            console.warn('Failed to add ICE candidate:', err);
+            pendingCandidatesRef.current.push(signal.ice);
+          }
+        } else {
+          pendingCandidatesRef.current.push(signal.ice);
+        }
+      } else if (signal.type === 'reset') {
+        hangUp();
+        setWarningMessage('Call was reset due to a signaling error. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error handling incoming signal:', error);
+      if (currentCall) {
+        sendSignal(currentCall.otherUser._id, { type: 'reset' });
+      }
+      hangUp();
+      setWarningMessage(`Call error: ${error.name || error.message}. Call reset.`);
+    }
+  }, [currentCall, hangUp, sendSignal]);
+
+  useEffect(() => {
+    if (!currentCall || !socket) {
+      return;
+    }
+    if (callSetupActiveRef.current) {
+      console.warn(`[${new Date().toLocaleTimeString()}] WebRTC setup already active. Skipping duplicate setup attempt.`);
+      return;
+    }
+    callSetupActiveRef.current = true;
+    let isMounted = true;
     const setupWebRTC = async () => {
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.ontrack = null;
+        peerConnectionRef.current.onicecandidate = null;
+        peerConnectionRef.current.oniceconnectionstatechange = null;
+        peerConnectionRef.current.onsignalingstatechange = null;
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      pendingCandidatesRef.current = [];
+      if (!isMounted || !currentCall || !socket || !callSetupActiveRef.current) {
+        callSetupActiveRef.current = false;
+        return;
+      }
       try {
-        // 1. Get local media stream
-        // Use selected device IDs if available, otherwise use defaults
         const constraints = {
           video: selectedVideoDevice ? { deviceId: { exact: selectedVideoDevice } } : true,
           audio: selectedAudioDevice ? { deviceId: { exact: selectedAudioDevice } } : true,
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints).catch(error => {
             console.error('Error accessing media devices:', error);
-            // Handle the case where user denies media access
-            // You might want to show an error message or disable call functionality
-            throw error; // Re-throw to prevent further setup if media access fails
+            throw error;
         });
+        if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        }
         localStreamRef.current = stream;
-        console.log('Got local stream');
-
-        // 2. Create RTCPeerConnection
         peerConnectionRef.current = new RTCPeerConnection({
           iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' }, // Google's public STUN server
-            // Add TURN server configuration here if needed for NAT traversal
+            { urls: 'stun:stun.l.google.com:19302' },
           ],
         });
-
         const peerConnection = peerConnectionRef.current;
-
-        // Add local stream tracks to the peer connection
         stream.getTracks().forEach(track => {
           peerConnection.addTrack(track, stream);
         });
-
-        // 3. Handle incoming tracks (remote stream)
         peerConnection.ontrack = (event) => {
-          console.log('Got remote track', event.streams[0]);
-          console.log('WebRTC Event: ontrack');
+          console.log(`[${new Date().toLocaleTimeString()}] Received remote track event. Stream ID: ${event.streams[0]?.id}. PC Signaling State: ${peerConnection.signalingState}, ICE Connection State: ${peerConnection.iceConnectionState}`);
+          if (remoteVideoRef.current) { // Defensive check
           remoteVideoRef.current.srcObject = event.streams[0];
+            console.log(`[${new Date().toLocaleTimeString()}] remoteVideoRef.current.srcObject set.`);
+          }
         };
 
         // 4. Handle ICE candidates
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
-            console.log('Sending ICE candidate', event.candidate);
-            console.log('WebRTC Event: onicecandidate (sending)');
+            console.log(`[${new Date().toLocaleTimeString()}] Sending ICE candidate:`, event.candidate);
             sendSignal(currentCall.otherUser._id, { ice: event.candidate });
           }
         };
-
-        // 5. Handle signaling (Offer/Answer)
         if (currentCall.isCaller) {
-          // Caller creates offer
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          console.log('WebRTC Event: createOffer & setLocalDescription (caller)');
-          console.log('Sending offer:', offer);
           sendSignal(currentCall.otherUser._id, { offer: offer });
-          console.log('Caller:- it emit call'); // Console log as requested
-        } else {
-          // Receiver (callee) waits for offer and sends answer
-          // The incoming offer is received via the 'returningSignal' socket event, handled below
         }
-
+        peerConnection.oniceconnectionstatechange = () => {
+          if (['disconnected', 'failed', 'closed'].includes(peerConnection.iceConnectionState)) {
+            if (currentCall && peerConnectionRef.current === peerConnection) {
+                setWarningMessage('Connection lost. Hanging up...');
+                sendSignal(currentCall.otherUser._id, { type: 'reset' });
+                setTimeout(() => {
+                  hangUp();
+                }, 1000);
+            }
+          }
+        };
+        peerConnection.onsignalingstatechange = () => {};
       } catch (error) {
         console.error('Error setting up WebRTC:', error);
+        if (isMounted && callSetupActiveRef.current) {
+            setWarningMessage(`Call setup failed: ${error.name || error.message}. Please try again.`);
+            hangUp();
+        }
+        callSetupActiveRef.current = false;
       }
     };
-
-    // Only run setupWebRTC when the component mounts or currentCall/socket change significantly
-    if (currentCall && socket) {
       setupWebRTC();
-    }
-
-    // 6. Handle incoming signaling data
-    if (socket) {
-      const handleReturningSignal = async ({ signal }) => {
-        console.log('Receiving signaling data', signal);
-        if (!peerConnectionRef.current) return;
-
-        try {
-          if (signal.type === 'userStartedScreenShare') {
-            setOtherUserIsSharing(true);
-            setWarningMessage(null);
-          } else if (signal.type === 'userStoppedScreenShare') {
-            setOtherUserIsSharing(false);
-          } else if (signal.offer) {
-            // Received an offer (I am the callee)
-            await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signal.offer));
-            console.log('WebRTC Event: setRemoteDescription (offer - callee)');
-            const answer = await peerConnectionRef.current.createAnswer();
-            await peerConnectionRef.current.setLocalDescription(answer);
-            console.log('WebRTC Event: createAnswer & setLocalDescription (callee)');
-            console.log('Sending answer:', answer);
-            sendSignal(currentCall.otherUser._id, { answer: answer });
-            console.log('Reciever:- it emit event call-accepted'); // Console log as requested
-          } else if (signal.answer) {
-            // Received an answer (I am the caller)
-            await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signal.answer));
-            console.log('WebRTC Event: setRemoteDescription (answer - caller)');
-          } else if (signal.ice) {
-            // Received an ICE candidate
-            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(signal.ice));
-            console.log('WebRTC Event: addIceCandidate (receiving)');
-          }
-        } catch (error) {
-          console.error('Error handling incoming signal:', error);
-        }
-      };
-
+      socket.off('returningSignal', handleReturningSignal);
       socket.on('returningSignal', handleReturningSignal);
+    return () => {
+       isMounted = false;
+       callSetupActiveRef.current = false;
+       socket.off('returningSignal', handleReturningSignal);
+    };
+  }, [currentCall, socket, selectedAudioDevice, selectedVideoDevice, handleReturningSignal, hangUp, sendSignal]);
 
-      // Cleanup socket listener
-      return () => {
-        socket.off('returningSignal', handleReturningSignal);
-      };
-    }
-
-  }, [currentCall?.otherUser._id, socket]); // Dependency array adjusted
-
-  // Effect to enumerate devices on mount
   useEffect(() => {
     enumerateMediaDevices();
-    // Request media permissions to ensure device labels are available
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      stream.getTracks().forEach(track => track.stop()); // Stop tracks immediately after getting permission
-      enumerateMediaDevices(); // Enumerate again after getting permissions
+      stream.getTracks().forEach(track => track.stop());
+      enumerateMediaDevices();
     }).catch(error => {
-      console.warn('Could not get media permissions for initial enumeration:', error);
-      // Continue with enumeration even without permissions (device labels might be empty)
       enumerateMediaDevices();
     });
-  }, []); // Run only on mount
-
-  // Cleanup function to close peer connection and stop tracks
-  useEffect(() => {
-    return () => {
-      console.log('Cleaning up WebRTC connection');
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        console.log('Stopped local media tracks');
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        console.log('Closed peer connection');
-      }
-    };
-  }, []); // Run only on component unmount
+  }, []);
 
   return (
     <div className={`fixed inset-0 bg-zinc-900 text-white flex flex-col justify-between align-middle m-4 pb-20 `}>
@@ -542,4 +565,4 @@ export const VideoCallRoom = ({ currentCall, hangUp, sendSignal }) => {
         </div>
     </div>
   );
-}; 
+};

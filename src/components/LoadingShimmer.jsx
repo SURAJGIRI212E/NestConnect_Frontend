@@ -36,7 +36,7 @@ export const WhoToFollowItemShimmer = () => (
   </div>
 );
 export const SpinnerShimmer=()=>(
-  <div className="animate-spin h-12 w-12 border-t-4 border-b-4 rounded-full border-blue-400"></div>
+  <div className="animate-spin h-8 w-8 border-t-4 border-b-4 rounded-full border-blue-600"></div>
 )
 const LoadingShimmer = ({ className, type }) => {
  

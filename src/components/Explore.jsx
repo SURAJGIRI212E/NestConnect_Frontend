@@ -1,34 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { IoIosSearch } from "react-icons/io";
 import { Tweet } from '../minicomponents/Tweet';
+import { useSearchPostsQuery } from '../hooks/usePostCalls';
 
 export const Explore = ({ myfeedRef }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  const { data, isLoading, isError, error } = useSearchPostsQuery(debouncedSearchQuery);
+  const searchResults = data?.posts || [];
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (searchQuery) {
-        // TODO: Implement actual search logic here
-        // This is just placeholder data
-        const mockResults = [
-          {
-            type: 'user',
-            username: 'johndoe',
-            name: 'John Doe',
-            bio: 'Software developer'
-          },
-          {
-            type: 'post',
-            content: 'This is a sample post matching the search',
-            author: '@janedoe'
-          }
-        ];
-
-        setSearchResults(mockResults);
-      } else {
-        setSearchResults([]);
-      }
+      setDebouncedSearchQuery(searchQuery);
     }, 500); // 500ms debounce delay
 
     return () => clearTimeout(delayDebounceFn);
@@ -37,6 +21,8 @@ export const Explore = ({ myfeedRef }) => {
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
   };
+
+  if (isError) return <div className="p-4 text-center text-red-500">Error searching posts: {error.message}</div>;
 
   return (
     <div className="flex flex-col w-full">
@@ -56,20 +42,15 @@ export const Explore = ({ myfeedRef }) => {
         </div>
 
         <div className="px-4">
-          {searchResults.map((result, index) => (
-            result.type === 'user' ? (
-              <div key={index} className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b">
-                <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-                <div>
-                  <div className="font-bold">{result.name}</div>
-                  <div className="text-gray-500 text-sm">@{result.username}</div>
-                  <div className="text-sm">{result.bio}</div>
-                </div>
-              </div>
-            ) : (
-              <Tweet key={index} tweet={result} />
-            )
-          ))}
+          {isLoading ? (
+            <div className="p-4 text-center text-gray-500">Searching...</div>
+          ) : searchResults.length > 0 ? (
+            searchResults.map((result) => (
+              <Tweet key={result._id} tweet={result} />
+            ))
+          ) : (debouncedSearchQuery && !isLoading) ? (
+            <div className="p-4 text-center text-gray-500">No results found for "{debouncedSearchQuery}".</div>
+          ) : null}
         </div>
       </div>
     </div>

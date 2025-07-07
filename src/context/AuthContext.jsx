@@ -1,11 +1,14 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../utils/axios';
+import { useDispatch } from 'react-redux';
+import { setAuthUser } from '../redux/slices/authSlice';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     checkAuthStatus();
@@ -14,20 +17,21 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       const response = await axiosInstance.get('/api/auth/me');
-      // Assuming /api/auth/me returns { status: 'success', data: userObject }
       if (response.data.status === 'success') {
         setUser(response.data.data);
-        // Use the _id from the user object returned by /me
+        dispatch(setAuthUser(response.data.data)); // Dispatch user data to Redux
         if (response.data.data?._id) {
             localStorage.setItem('userId', response.data.data._id);
         }
       } else {
         setUser(null);
+        dispatch(setAuthUser(null)); // Clear user data in Redux
         localStorage.removeItem('userId');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
+      dispatch(setAuthUser(null)); // Clear user data in Redux
       localStorage.removeItem('userId');
     } finally {
       setLoading(false);
@@ -42,8 +46,15 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.status === 'success') {      
-        setUser({ _id: response.data.userid, username: response.data.username }); // Set minimal user info
+        // The /api/auth/login currently returns { userid, username }. 
+        // To get the full user object (including following/blockedUsers) for Redux,
+        // we should ideally fetch it or have the login endpoint return it.
+        // For now, let's rely on checkAuthStatus immediately after login.
+        // If checkAuthStatus is called right after, it will populate the Redux store correctly.
+        setUser({ _id: response.data.userid, username: response.data.username }); // Set minimal user info in context
         localStorage.setItem('userId', response.data.userid);
+        await checkAuthStatus(); // Call checkAuthStatus to immediately update Redux with full user data
+
         return { success: true };
       } else {
          return {
@@ -53,7 +64,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Extracting specific error message from backend response
       const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
 
       return {
@@ -70,6 +80,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
+      dispatch(setAuthUser(null)); // Clear user data in Redux
       localStorage.removeItem('userId');
     }
   };

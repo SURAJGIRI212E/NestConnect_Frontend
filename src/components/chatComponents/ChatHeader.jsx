@@ -4,14 +4,13 @@ import { CiVideoOn,CiVideoOff } from "react-icons/ci";
 import useravator from "../../avator2.jpg";
 import { useSocket } from "../../context/SocketContext";
 import React, { useState, useEffect } from 'react';
-import LoadingShimmer, { SpinnerShimmer } from "../LoadingShimmer";
+import { SpinnerShimmer } from "../LoadingShimmer";
 
 
 export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
-  const { isUserOnline, callUser } = useSocket();
+  const { isUserOnline, callUser, callState, canCall } = useSocket();
   const [warningMessage, setWarningMessage] = useState(null);
-  const [showShimmer, setShowShimmer] = useState(true);
-  const [shimmerClass, setShimmerClass] = useState('');
+
 
   useEffect(() => {
     if (warningMessage) {
@@ -21,10 +20,6 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
       return () => clearTimeout(timer);
     }
   }, [warningMessage]);
-
-
-
-
 
   if (isLoading) return (
     <div className="flex justify-between items-center border-b pb-2 m-4">
@@ -79,18 +74,16 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
              className={`hover:text-gray-700 ${isOnline ? 'text-green-500' : 'text-gray-500'}`} 
              onClick={() => {
                if (profile?.user) {
-                 if (isOnline) {
-                   callUser(profile.user);
-                 } else {
-                   setWarningMessage(`${profile.user.fullName || profile.user.username} is currently offline.`);
-                 }
+                 callUser(profile.user);
                }
-             }}>
+             }}
+             disabled={!canCall || callState !== 'idle' || !isOnline}
+             >
              {isOnline ? <CiVideoOn size="23px"/> : <CiVideoOff size="23px"/>}
            </button>
-           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-             <IoClose size="24px" />
-           </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <IoClose size="24px" />
+          </button>
         </div>
       </div>
 

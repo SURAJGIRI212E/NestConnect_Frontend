@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config/config';
+import { showGlobalToast } from '../components/Toast';
 
 const instance = axios.create({
   baseURL: API_URL,
@@ -18,6 +19,9 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => {
+    if (showGlobalToast) {
+      showGlobalToast(error.message || 'Request failed', 'error');
+    }
     return Promise.reject(error);
   }
 );
@@ -31,6 +35,14 @@ instance.interceptors.response.use(
       localStorage.removeItem('userId');
       window.location.href = '/login';
     }
+
+    // Display specific error message from backend if available
+    if (error.response?.data?.message && showGlobalToast) {
+      showGlobalToast(error.response.data.message, 'error');
+    } else if (showGlobalToast) {
+      showGlobalToast(error.message || 'An unexpected error occurred.', 'error');
+    }
+
     return Promise.reject(error);
   }
 );

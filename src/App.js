@@ -96,10 +96,13 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+             
               <Route 
                 path="/" 
                 element={<Navigate to="/home" />} 
               />
+<Route path="*" element={<Navigate to="/home" replace />} />
+
             </Routes>
           </div>
         </SocketProvider>

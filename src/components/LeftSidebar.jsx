@@ -14,15 +14,18 @@ import { useAuth } from '../context/AuthContext';
 import { useSelector } from 'react-redux';
 import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
 
+
 export const LeftSidebar = () => {
-  const { logout } = useAuth();
+ 
+  const { user: currentUser ,logout } = useAuth();
   const totalUnreadCount = useSelector(selectTotalUnreadCount);
   const location = useLocation();
 
   const navItems = [
     { icon: <GoHome size="23px" className="text-gray-800" />, label: 'Home' ,path:'/home'},
     { icon: <MdOutlineExplore size="23px" className="text-gray-800" />, label: 'Explore', path:'/home/search' },
-    { icon: <IoMdNotificationsOutline size="23px" className="text-gray-800" />, label: 'Notification',path:'/home/noti' },
+    { icon: <IoMdNotificationsOutline size="23px" className="text-gray-800" />, 
+      label: 'Notification',path:'/home/noti' },
     { 
       icon: <MdOutlineLocalPostOffice size="23px" className="text-gray-800" />, 
       label: 'Message' ,path:'/home/message',
@@ -30,7 +33,7 @@ export const LeftSidebar = () => {
     },
     { icon: <FaRegBookmark size="23px" className="text-gray-800" />, label: 'Bookmarks' ,path:'/home/bookmarks'},
     { icon: <MdOutlineWorkspacePremium size="23px" className="text-gray-800" />, label: 'Premium',path:'/premium' },
-    { icon: <FaRegUser size="22px" className="text-gray-800" />, label: 'Profile' ,path:'/home/profile'},
+    { icon: <FaRegUser size="22px" className="text-gray-800" />, label: 'Profile' ,path:`/home/profile/${currentUser?.username}`},
  
  
 ];

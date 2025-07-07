@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useDispatch } from 'react-redux';
 import { updateConversationWithMessage, updateConversationUnreadCount, deleteConversation, setConversations } from '../redux/slices/chatSlice';
@@ -17,9 +17,11 @@ export const SocketProvider = ({ children }) => {
   const [incomingCall, setIncomingCall] = useState(null); // { from: user object, signal: signal data }
   const [outgoingCall, setOutgoingCall] = useState(null); // { to: user object }
   const [currentCall, setCurrentCall] = useState(null); // { otherUser: user object, isCaller: boolean }
+  const [canCall, setCanCall] = useState(true);
+  const callCooldownTimeoutRef = useRef(null);
   const dispatch = useDispatch();
   const { user } = useAuth();
-  // Fetch initial conversations
+  // Fetch initial conversations if there is
   useEffect(() => {
     if (!user?._id) return;
 
@@ -95,6 +97,7 @@ export const SocketProvider = ({ children }) => {
         skipUnreadIncrement: true
       }));
     });    
+    
     socket.on('unreadCountUpdated', ({ conversationId, unreadCount }) => {
       dispatch(updateConversationUnreadCount({ conversationId, unreadCount }));
     });
@@ -168,8 +171,18 @@ export const SocketProvider = ({ children }) => {
     socket.on('callAccepted', ({ signal, to }) => {
       console.log('Call accepted by:', to.username);
       console.log('Socket Event: callAccepted');
-      // This event is received by the caller
-      setCurrentCall({ otherUser: to, isCaller: true });
+      // Only update currentCall if it actually changes
+      setCurrentCall(prev => {
+        if (
+          prev &&
+          prev.otherUser &&
+          prev.otherUser._id === to._id &&
+          prev.isCaller === true
+        ) {
+          return prev; // No change, don't update
+        }
+        return { otherUser: to, isCaller: true };
+      });
       setCallState('active');
       // The caller needs to process the signal data from the answer
       // The WebRTC logic will handle this in the VideoCallRoom component
@@ -181,6 +194,8 @@ export const SocketProvider = ({ children }) => {
       console.log('Socket Event: callRejected');
       setOutgoingCall(null);
       setCallState('idle');
+      setCanCall(false); // Start cooldown
+      callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
       // Optionally show a notification to the caller
     });
 
@@ -190,13 +205,15 @@ export const SocketProvider = ({ children }) => {
       console.log('Socket Event: callEnded');
       setCurrentCall(null);
       setCallState('idle');
+      setCanCall(false); // Start cooldown
+      callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
       // Optionally show a notification that the call ended
     });
 
     // Receive signaling data (ICE candidates, offer/answer)
     socket.on('returningSignal', ({ signal }) => {
-      console.log('Receiving signaling data', signal);
-      console.log('Socket Event: returningSignal');
+      // console.log('Receiving signaling data', signal);
+   
       // This signal needs to be processed by the RTCPeerConnection in the VideoCallRoom component
       // The WebRTC logic will handle this.
     });
@@ -209,7 +226,7 @@ export const SocketProvider = ({ children }) => {
       socket.off('callEnded');
       socket.off('returningSignal');
     };
-  }, [socketRef.current]); // Depend on socketRef.current
+  }, [user]); // Only depend on user
 
   const emitEvent = (eventName, data) => {
     if (!socketRef.current?.connected || !user?._id) return;
@@ -219,11 +236,32 @@ export const SocketProvider = ({ children }) => {
 
   // Video call helper functions
   const callUser = (targetUser) => {
-    if (!socketRef.current?.connected || !user?._id) return;
+    if (!socketRef.current?.connected || !user?._id) {
+      setSocketError('Socket not connected.');
+      return;
+    }
+
+    if (callState !== 'idle') {
+      setSocketError('A call is already in progress or incoming.');
+      return;
+    }
+
+    if (!canCall) {
+      setSocketError('Please wait before trying to call again.');
+      return;
+    }
+
+    // Clear any existing cooldown timeout before starting a new call
+    if (callCooldownTimeoutRef.current) {
+      clearTimeout(callCooldownTimeoutRef.current);
+      callCooldownTimeoutRef.current = null;
+    }
+
     console.log('Calling user:', targetUser.username);
     console.log('Socket Emit: callUser', { targetUserId: targetUser._id, from: user });
     setOutgoingCall({ to: targetUser });
     setCallState('calling');
+    setCanCall(false); // Temporarily disable calling immediately
     socketRef.current.emit('callUser', { targetUserId: targetUser._id, from: user });
   };
 
@@ -232,9 +270,20 @@ export const SocketProvider = ({ children }) => {
     console.log('Answering call from:', incomingCall.from.username);
     console.log('Socket Emit: answerCall', { signal, to: incomingCall.from._id, from: user });
     setCallState('active');
-    setCurrentCall({ otherUser: incomingCall.from, isCaller: false });
+    setCurrentCall(prev => {
+      if (
+        prev &&
+        prev.otherUser &&
+        prev.otherUser._id === incomingCall.from._id &&
+        prev.isCaller === false
+      ) {
+        return prev; // No change, don't update
+      }
+      return { otherUser: incomingCall.from, isCaller: false };
+    });
     socketRef.current.emit('answerCall', { signal, to: incomingCall.from._id, from: user });
     setIncomingCall(null); // Clear incoming call state
+    setCanCall(true); // Allow new calls after answering (as a new call is now active)
   };
 
   const rejectCall = () => {
@@ -242,11 +291,13 @@ export const SocketProvider = ({ children }) => {
     console.log('Rejecting call from:', incomingCall.from.username);
     console.log('Socket Emit: rejectCall', { to: incomingCall.from._id });
     socketRef.current.emit('rejectCall', { to: incomingCall.from._id });
-    setIncomingCall(null); // Clear incoming call state
+    setIncomingCall(null);
     setCallState('idle');
+    setCanCall(false); // Start cooldown
+    callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
   };
 
-  const hangUp = () => {
+  const hangUp = useCallback(() => {
     if (!socketRef.current?.connected || !user?._id || (!currentCall && !outgoingCall)) return;
     console.log('Hanging up call');
     const targetUserId = currentCall?.otherUser._id || outgoingCall?.to._id;
@@ -257,14 +308,16 @@ export const SocketProvider = ({ children }) => {
     setCurrentCall(null);
     setOutgoingCall(null);
     setCallState('idle');
-  };
+    setCanCall(false); // Start cooldown
+    callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
+  }, [currentCall, outgoingCall, user?._id]);
 
-  const sendSignal = (targetUserId, signal) => {
+  const sendSignal = useCallback((targetUserId, signal) => {
     if (!socketRef.current?.connected || !user?._id) return;
     console.log('Sending signal to:', targetUserId);
-    console.log('Socket Emit: sendingSignal', { targetUserId, signal });
+    // console.log('Socket Emit: sendingSignal', { targetUserId, signal });
     socketRef.current.emit('sendingSignal', { targetUserId, signal });
-  };
+  }, [user?._id]);
 
   const value = {
     socket: socketRef.current,
@@ -281,7 +334,8 @@ export const SocketProvider = ({ children }) => {
     rejectCall,
     hangUp,
     sendSignal,
-    socketError // Expose socketError
+    socketError,
+    canCall // Expose canCall
   };
 
   return (

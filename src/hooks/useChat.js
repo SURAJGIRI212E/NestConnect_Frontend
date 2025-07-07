@@ -69,6 +69,7 @@ export const useChat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
   // Get or create conversation when selectedPeople changes
   useEffect(() => {
     const getConversation = async () => {

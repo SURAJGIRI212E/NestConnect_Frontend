@@ -3,39 +3,61 @@ import { Tweet } from "../minicomponents/Tweet";
 import { IoIosArrowBack } from "react-icons/io";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axios";
-import LoadingShimmer from './LoadingShimmer';
+import LoadingShimmer, { FeedPostShimmer } from './LoadingShimmer';
+import { useGetUserPostsQuery, useGetOwnLikedPostsQuery, useGetUserBookmarksQuery, useGetUserCommentsQuery } from '../hooks/usePostCalls';
+import { EditProfileModal } from "../minicomponents/EditProfileModal";
+import { useUserActions, useGetUserProfileQuery } from "../hooks/useUserActions";
+import { RiMoreLine } from "react-icons/ri";
+import { useDispatch } from "react-redux";
+import { setIsChatOpen, setSelectedPeople } from "../redux/slices/chatSlice";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-const Profile = ({ myfeedRef }) => {
+const Profile = () => {
   const { user: currentUser } = useAuth();
+  const { username } = useParams();
   const [profileUser, setProfileUser] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [profileError, setProfileError] = useState(null);
   const [messagePreference, setMessagePreference] = useState('everyone');
   const [updateStatus, setUpdateStatus] = useState(null);
+  const [activeTab, setActiveTab] = useState('posts'); // 'posts', 'replies', 'likes', 'bookmarks'
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isHoveringFollow, setIsHoveringFollow] = useState(false);
+
+  const { followUserMutation, unfollowUserMutation, toggleBlockUserMutation } = useUserActions();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Fetch profile user details using react-query
+  const { data: fetchedProfileData, isLoading: isLoadingProfile, isError: isErrorProfile, error: profileQueryError } = useGetUserProfileQuery(username);
+ 
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!currentUser?.username) return;
-      setLoadingProfile(true);
-      setProfileError(null);
-      try {
-        const response = await axiosInstance.get(`/api/users/getuser/${currentUser.username}`);
-        if (response.data.status === 'success') {
-          setProfileUser(response.data.data.user);
-          setMessagePreference(response.data.data.user.messagePreference || 'everyone');
-        } else {
-          setProfileError(response.data.message || 'Failed to load user profile');
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        setProfileError(error.response?.data?.message || 'Failed to load user profile');
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
+    // Reset profileUser when username param changes, to prevent stale data display
+    setProfileUser(null);
+    setMessagePreference('everyone'); //imp line Reset to default
 
-    fetchUserProfile();
-  }, [currentUser]);
+    if (fetchedProfileData) {
+      setProfileUser(fetchedProfileData.user);
+      setMessagePreference(fetchedProfileData.user.messagePreference || 'everyone');
+    }
+  }, [username, fetchedProfileData]); 
+
+  // Fetch user posts
+  const { data: userPostsData, isLoading: isLoadingUserPosts, isError: isErrorUserPosts, error: userPostsError } = useGetUserPostsQuery(profileUser?._id, 1, 10);
+  const userPosts = userPostsData?.posts || [];
+
+  // Fetch user comments (for replies tab)
+  const { data: userCommentsData, isLoading: isLoadingUserComments, isError: isErrorUserComments, error: userCommentsError } = useGetUserCommentsQuery(profileUser?._id, 1, 10);
+  const userComments = userCommentsData?.comments || [];
+
+  // Fetch own liked posts (only if it's the current user's profile)
+  const { data: likedPostsData, isLoading: isLoadingLikedPosts, isError: isErrorLikedPosts, error: likedPostsError } = useGetOwnLikedPostsQuery(currentUser?._id === profileUser?._id ? 1 : null, 10);
+  const likedPosts = likedPostsData?.posts || [];
+
+  // Fetch user bookmarks (only if it's the current user's profile)
+  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery(currentUser?._id === profileUser?._id ? 1 : null, 10);
+  const bookmarks = bookmarksData?.posts || [];
 
   const handlePreferenceChange = async (e) => {
     const newPreference = e.target.value;
@@ -59,33 +81,128 @@ const Profile = ({ myfeedRef }) => {
     setTimeout(() => setUpdateStatus(null), 3000);
   };
 
-  if (loadingProfile) {
+  const handleProfileUpdated = (updatedUser) => {
+    setProfileUser(updatedUser);
+  };
+
+  const handleFollowToggle = () => {
+    if (profileUser?.isFollowingByCurrentUser) {
+      unfollowUserMutation.mutate(profileUser._id);
+    } else {
+      followUserMutation.mutate(profileUser._id);
+    }
+    setShowMoreMenu(false);
+  };
+
+  const handleBlockToggle = () => {
+    if (window.confirm(`Are you sure you want to ${profileUser?.isBlockedByCurrentUser ? 'unblock' : 'block'} @${profileUser?.username}?`)) {
+      toggleBlockUserMutation.mutate(profileUser._id);
+    }
+    setShowMoreMenu(false);
+  };
+
+  const handleDirectMessage = () => {
+    if (profileUser) {
+      dispatch(setSelectedPeople([{ _id: profileUser._id, username: profileUser.username, fullName: profileUser.fullName, avatar: profileUser.avatar }]));
+      dispatch(setIsChatOpen(true));
+    }
+    setShowMoreMenu(false);
+  };
+
+  if (isLoadingProfile) {
     return <LoadingShimmer type="profile-page" />;
   }
 
-  if (profileError) {
-    return <div className="p-4 text-center text-red-500">Error: {profileError}</div>;
+  if (isErrorProfile) {
+    return <div className="p-4 text-center text-red-500">Error: {profileQueryError.message}</div>;
   }
+
+  // Display message if the user is blocked
+  if (profileUser?.isBlockedByCurrentUser) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[500px] text-gray-700">
+        <p className="text-xl font-semibold mb-4">You have blocked this user, or they have blocked you.</p>
+        <p className="text-md text-gray-500">No content available.</p>
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'posts':
+        if (isLoadingUserPosts) {
+          return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
+        }
+        if (isErrorUserPosts) {
+          return <div className="p-4 text-center text-red-500">Error loading posts: {userPostsError.message}</div>;
+        }
+        if (userPosts.length === 0) {
+          return <div className="p-4 text-center text-gray-500">No posts available.</div>;
+        }
+        return userPosts.map((tweet) => <Tweet key={tweet._id} tweet={tweet} />);
+      case 'replies':
+        if (isLoadingUserComments) {
+          return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
+        }
+        if (isErrorUserComments) {
+          return <div className="p-4 text-center text-red-500">Error loading comments: {userCommentsError.message}</div>;
+        }
+        if (userComments.length === 0) {
+          return <div className="p-4 text-center text-gray-500">No comments available.</div>;
+        }
+        return userComments.map((comment) => <Tweet key={comment._id} tweet={comment} />);
+      case 'likes':
+        if (isLoadingLikedPosts) {
+          return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
+        }
+        if (isErrorLikedPosts) {
+          return <div className="p-4 text-center text-red-500">Error loading liked posts: {likedPostsError.message}</div>;
+        }
+        if (likedPosts.length === 0) {
+          return <div className="p-4 text-center text-gray-500">No liked posts available.</div>;
+        }
+        return likedPosts.map((tweet) => <Tweet key={tweet._id} tweet={tweet} />);
+      case 'bookmarks':
+        if (isLoadingBookmarks) {
+          return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
+        }
+        if (isErrorBookmarks) {
+          return <div className="p-4 text-center text-red-500">Error loading bookmarks: {bookmarksError.message}</div>;
+        }
+        if (bookmarks.length === 0) {
+          return <div className="p-4 text-center text-gray-500">No bookmarks available.</div>;
+        }
+        return bookmarks.map((tweet) => <Tweet key={tweet._id} tweet={tweet} />);
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="flex flex-col w-full bg-gradient-to-br from-zinc-200 to-blue-300 min-h-screen">
-      <div ref={myfeedRef} className="flex-1 ">
+      <div className="flex-1 ">
         
         <div className="sticky top-0 z-[102] bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg border-b border-white border-opacity-30">
           <button onClick={() => window.history.back()} className="p-4 text-gray-800 hover:text-blue-600 transition duration-200"><IoIosArrowBack size="20px" /></button>
-          <span className="text-xl font-bold text-gray-800">{profileUser?.username} </span><span className="text-gray-600 text-xs">18k posts</span>
+          <span className="text-xl font-bold text-gray-800">{profileUser?.username} </span><span className="text-gray-600 text-xs">{userPosts.length} posts</span>
         </div>
         {/* Cover and Profile Picture */}
         <div className="relative">
           <div className="h-48 bg-gray-300 relative overflow-hidden">
-            <div className="absolute inset-0 animate-shimmer-flash"></div>
+            <div className="absolute inset-0  "></div>
+            {profileUser?.coverImage && (
+              <img src={profileUser.coverImage} alt="Cover" className="w-full h-full object-cover" />
+            )}
           </div>
 
           {/* Profile Picture Container */}
           <div className="px-4">
             <div className="flex items-end justify-between">
               <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-400 mt-[-55px] shadow-lg relative overflow-hidden">
-                <div className="absolute inset-0 animate-shimmer-flash"></div>
+                <div className="absolute inset-0 "></div>
+                {profileUser?.avatar && (
+                  <img src={profileUser.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                )}
               </div>
             </div>
           </div>
@@ -94,23 +211,69 @@ const Profile = ({ myfeedRef }) => {
       
         <div className=" flex justify-end px-4 ">
           {currentUser?._id === profileUser?._id ? (
-            <button className="bg-blue-500 text-white text-xs px-4 py-2 rounded-full font-semibold hover:bg-blue-600 transition duration-200 shadow-md">
+            <div className="flex gap-2">
+              <button
+                className=" bg-blue-500 text-white text-xs px-4 py-2 rounded-full font-semibold hover:bg-blue-600 transition duration-200 shadow-md"
+                onClick={() => setShowEditProfileModal(true)}
+              >
               Edit profile
             </button>
+              <button
+                className=" bg-gray-500 text-white text-xs px-4 py-2 rounded-full font-semibold hover:bg-gray-600 transition duration-200 shadow-md"
+                onClick={() => navigate('/home/blocked-users')}
+              >
+                Blocked List
+              </button>
+            </div>
           ) : (
             <>
-              <button className="text-xs px-4 py-2 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition duration-200 shadow-md">
-                Follow
+              <button
+                className={`text-xs px-4 py-2 rounded-full font-semibold transition duration-200 shadow-md
+                  ${profileUser?.isFollowingByCurrentUser
+                    ? (isHoveringFollow
+                      ? "bg-white text-red-500 border border-red-500  hover:text-red-600"
+                      : "!bg-blue-700 text-white hover:bg-blue-600")
+                    : "!bg-blue-700 text-white hover:bg-blue-600"
+                  }
+                `}
+                onClick={handleFollowToggle}
+                onMouseEnter={() => setIsHoveringFollow(true)}
+                onMouseLeave={() => setIsHoveringFollow(false)}
+              >
+                {profileUser?.isFollowingByCurrentUser 
+                  ? (isHoveringFollow ? "Unfollow" : "Following") 
+                  : "Follow"}
               </button>
-              <button className="ml-2 text-xs px-4 py-2 border border-white border-opacity-90 rounded-full font-semibold text-gray-800 hover:bg-white hover:bg-opacity-30 transition duration-200">
-                •••
+              <button
+                className="ml-2 text-xs px-4 py-2 border border-blue-700 border-opacity-90 bg-white/40  backdrop-blur-3xl shadow-lg text-gray-800 rounded-full font-semibold hover:bg-white transition duration-200 "
+                onClick={handleDirectMessage}
+              >
+                Message
               </button>
+              <div className="relative">
+                <button
+                  className="ml-2 text-xs px-4 py-2 border border-blue-700 border-opacity-90 bg-white/40  backdrop-blur-3xl shadow-lg text-gray-800 rounded-full font-semibold hover:bg-white transition duration-200"
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                >
+                  <RiMoreLine size="18px" />
+                </button>
+                {showMoreMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
+                      onClick={handleBlockToggle}
+                    >
+                      {profileUser?.isBlockedByCurrentUser ? "Unblock" : "Block"} @{profileUser?.username}
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
 
         {/* Profile Info */}
-        <div className="flex justify-center py-2 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-lg shadow-lg  m-2">
+        <div className="flex  py-4 px-2 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-lg shadow-lg  m-2">
          <div>
          <div className="flex justify-between">
             <div>
@@ -130,11 +293,12 @@ const Profile = ({ myfeedRef }) => {
 
           <div className="flex gap-4 mt-1 text-sm text-gray-700">
             <span>
-              <strong>123</strong>{" "}
+       
+              <strong>{profileUser?.followingCount }</strong>{" "}
               <span>Following</span>
             </span>
             <span>
-              <strong>456</strong>{" "}
+              <strong>{profileUser?.followersCount }</strong>{" "}
               <span>Followers</span>
             </span>
           </div>
@@ -150,7 +314,7 @@ const Profile = ({ myfeedRef }) => {
                 name="messagePreference"
                 value={messagePreference}
                 onChange={handlePreferenceChange}
-                className="mt-0.5 block  px-3 py-1.5 text-sm  rounded-md bg-white/70  text-gray-800 focus:outline-none focus:ring-1 focus:ring-black focus:ring-opacity-60"
+                className="mt-0.5 block   py-1.5 text-sm  rounded-md bg-white/70  text-gray-800 focus:outline-none focus:ring-1 focus:ring-black focus:ring-opacity-60"
               >
                 <option value="everyone">Everyone</option>
                 <option value="followers">My Followers</option>
@@ -170,30 +334,44 @@ const Profile = ({ myfeedRef }) => {
 
         {/* Tabs */}
         <div className="flex border-b border-white border-opacity-30 mt-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-lg shadow-lg m-4">
-          <button className="flex-1 py-3 font-semibold border-b-2 border-blue-500 text-blue-700 hover:text-blue-800 transition duration-200">
+          <button 
+            className={`flex-1 py-3 font-semibold ${activeTab === 'posts' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            onClick={() => setActiveTab('posts')}>
             Posts
           </button>
-          <button className="flex-1 py-3 text-gray-600 hover:bg-white hover:bg-opacity-30 transition duration-200">
+          <button 
+            className={`flex-1 py-3 font-semibold ${activeTab === 'replies' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            onClick={() => setActiveTab('replies')}>
             Replies
           </button>
-          <button className="flex-1 py-3 text-gray-600 hover:bg-white hover:bg-opacity-30 transition duration-200">
+          {currentUser?._id === profileUser?._id && (
+          <button 
+            className={`flex-1 py-3 font-semibold ${activeTab === 'likes' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            onClick={() => setActiveTab('likes')}>
             Likes
           </button>
-          <button className="flex-1 py-3 text-gray-600 hover:bg-white hover:bg-opacity-30 transition duration-200">
+          )}
+          {currentUser?._id === profileUser?._id && (
+          <button 
+            className={`flex-1 py-3 font-semibold ${activeTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            onClick={() => setActiveTab('bookmarks')}>
             Bookmarks
           </button>
+          )}
         </div>
 
         {/* Posts Feed */}
         <div className="space-y-4">
-          <Tweet />
-          <Tweet />
-          <Tweet />
-          <Tweet />
-          <Tweet />
-          <Tweet />
+          {renderContent()}
         </div>
       </div>
+      {showEditProfileModal && (
+        <EditProfileModal 
+          onClose={() => setShowEditProfileModal(false)}
+          currentProfileUser={profileUser}
+          onProfileUpdated={handleProfileUpdated}
+        />
+      )}
     </div>
   );
 };
