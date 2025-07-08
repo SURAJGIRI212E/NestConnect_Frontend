@@ -30,7 +30,22 @@ const Profile = () => {
 
   // Fetch profile user details using react-query
   const { data: fetchedProfileData, isLoading: isLoadingProfile, isError: isErrorProfile, error: profileQueryError } = useGetUserProfileQuery(username);
- 
+
+  // Fetch user posts
+  const { data: userPostsData, isLoading: isLoadingUserPosts, isError: isErrorUserPosts, error: userPostsError } = useGetUserPostsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser });
+  const userPosts = userPostsData?.posts || [];
+
+  // Fetch user comments (for replies tab)
+  const { data: userCommentsData, isLoading: isLoadingUserComments, isError: isErrorUserComments, error: userCommentsError } = useGetUserCommentsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser });
+  const userComments = userCommentsData?.comments || [];
+
+  // Fetch own liked posts (only if it's the current user's profile)
+  const { data: likedPostsData, isLoading: isLoadingLikedPosts, isError: isErrorLikedPosts, error: likedPostsError } = useGetOwnLikedPostsQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser && currentUser?._id === profileUser?._id });
+  const likedPosts = likedPostsData?.posts || [];
+
+  // Fetch user bookmarks (only if it's the current user's profile)
+  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser && currentUser?._id === profileUser?._id });
+  const bookmarks = bookmarksData?.posts || [];
 
   useEffect(() => {
     // Reset profileUser when username param changes, to prevent stale data display
@@ -43,21 +58,7 @@ const Profile = () => {
     }
   }, [username, fetchedProfileData]); 
 
-  // Fetch user posts
-  const { data: userPostsData, isLoading: isLoadingUserPosts, isError: isErrorUserPosts, error: userPostsError } = useGetUserPostsQuery(profileUser?._id, 1, 10);
-  const userPosts = userPostsData?.posts || [];
-
-  // Fetch user comments (for replies tab)
-  const { data: userCommentsData, isLoading: isLoadingUserComments, isError: isErrorUserComments, error: userCommentsError } = useGetUserCommentsQuery(profileUser?._id, 1, 10);
-  const userComments = userCommentsData?.comments || [];
-
-  // Fetch own liked posts (only if it's the current user's profile)
-  const { data: likedPostsData, isLoading: isLoadingLikedPosts, isError: isErrorLikedPosts, error: likedPostsError } = useGetOwnLikedPostsQuery(currentUser?._id === profileUser?._id ? 1 : null, 10);
-  const likedPosts = likedPostsData?.posts || [];
-
-  // Fetch user bookmarks (only if it's the current user's profile)
-  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery(currentUser?._id === profileUser?._id ? 1 : null, 10);
-  const bookmarks = bookmarksData?.posts || [];
+ 
 
   const handlePreferenceChange = async (e) => {
     const newPreference = e.target.value;
@@ -118,7 +119,7 @@ const Profile = () => {
   }
 
   // Display message if the user is blocked
-  if (profileUser?.isBlockedByCurrentUser) {
+  if (profileUser?.isBlockedByCurrentUser || profileUser?.blockedByOtherUser) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[500px] text-gray-700">
         <p className="text-xl font-semibold mb-4">You have blocked this user, or they have blocked you.</p>

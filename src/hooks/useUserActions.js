@@ -16,10 +16,10 @@ export const useUserActions = () => {
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(['userProfile']);
-            queryClient.invalidateQueries(['followers']);
-            queryClient.invalidateQueries(['following']);
-            queryClient.invalidateQueries(['suggestedUsers']);
+            // queryClient.invalidateQueries(['userProfile']);
+            // queryClient.invalidateQueries(['followers']);
+            // queryClient.invalidateQueries(['following']);
+            // queryClient.invalidateQueries(['suggestedUsers']);
         },
     });
 
@@ -30,10 +30,10 @@ export const useUserActions = () => {
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(['userProfile']);
-            queryClient.invalidateQueries(['followers']);
-            queryClient.invalidateQueries(['following']);
-            queryClient.invalidateQueries(['suggestedUsers']);
+            // queryClient.invalidateQueries(['userProfile']);
+            // queryClient.invalidateQueries(['followers']);
+            // queryClient.invalidateQueries(['following']);
+            // queryClient.invalidateQueries(['suggestedUsers']);
         },
     });
 
@@ -176,8 +176,6 @@ export const useGetUserProfileQuery = (username) => {
         },
         enabled: !!username,
         staleTime: 1000 * 60 * 10,
-        refetchOnMount: false,
-        refetchOnWindowFocus: false,
     });
 };
 

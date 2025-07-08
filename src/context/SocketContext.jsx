@@ -2,9 +2,11 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { io } from 'socket.io-client';
 import { useDispatch } from 'react-redux';
 import { updateConversationWithMessage, updateConversationUnreadCount, deleteConversation, setConversations } from '../redux/slices/chatSlice';
+// import { addNotification } from '../redux/slices/notiSlice';
 import { useAuth } from './AuthContext';
 import axiosInstance from '../utils/axios';
 import { SOCKET_URL } from '../config/config';
+import { useNotifications } from '../hooks/useNotifications';
 
 const SocketContext = createContext();
 
@@ -21,6 +23,7 @@ export const SocketProvider = ({ children }) => {
   const callCooldownTimeoutRef = useRef(null);
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const { prependNotification } = useNotifications();
   // Fetch initial conversations if there is
   useEffect(() => {
     if (!user?._id) return;
@@ -121,6 +124,12 @@ export const SocketProvider = ({ children }) => {
       }
     }, 30000);
 
+    // Listen for real-time notifications
+    socket.on('newNotification', (notification) => {
+      prependNotification(notification);
+      // Optionally, show a toast or sound
+    });
+
     // Clean up
     return () => {
       clearInterval(pingInterval);
@@ -135,6 +144,7 @@ export const SocketProvider = ({ children }) => {
       socket.off('callEnded');
       socket.off('returningSignal');
       socket.off('error'); // Clean up error listener
+      socket.off('newNotification'); // Clean up newNotification listener
     };
   }, [user, dispatch]);
 

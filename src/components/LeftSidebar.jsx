@@ -13,19 +13,25 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSelector } from 'react-redux';
 import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
+import { useNotifications } from '../hooks/useNotifications';
 
 
 export const LeftSidebar = () => {
  
   const { user: currentUser ,logout } = useAuth();
   const totalUnreadCount = useSelector(selectTotalUnreadCount);
+  const {  unreadCount,
+    refetch: refetchUnread}=useNotifications()
+
   const location = useLocation();
 
   const navItems = [
     { icon: <GoHome size="23px" className="text-gray-800" />, label: 'Home' ,path:'/home'},
     { icon: <MdOutlineExplore size="23px" className="text-gray-800" />, label: 'Explore', path:'/home/search' },
     { icon: <IoMdNotificationsOutline size="23px" className="text-gray-800" />, 
-      label: 'Notification',path:'/home/noti' },
+      label: 'Notification',path:'/home/noti',
+      badge: unreadCount > 0 ? unreadCount : null
+    },
     { 
       icon: <MdOutlineLocalPostOffice size="23px" className="text-gray-800" />, 
       label: 'Message' ,path:'/home/message',
@@ -56,7 +62,7 @@ export const LeftSidebar = () => {
               <div>{item.icon}</div>
               <h1 className="hidden lg:block font-semibold text-gray-800">{item.label}</h1>
               {item.badge && (
-                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] text-center">
+                <span className="absolute inline-flex items-center justify-center w-4 h-4 text-[10px]  text-white bg-blue-600  rounded-full top-1 end-1 ">
                   {item.badge}
                 </span>
               )}
