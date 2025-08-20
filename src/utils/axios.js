@@ -8,7 +8,7 @@ const instance = axios.create({
   timeout: 30000, // Increase timeout for mobile networks
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'any', // ✅ Add this line
+    // 'ngrok-skip-browser-warning': 'any', // ✅ Add this line
   }
 });
 
