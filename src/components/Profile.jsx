@@ -12,6 +12,7 @@ import { useDispatch } from "react-redux";
 import { setIsChatOpen, setSelectedPeople } from "../redux/slices/chatSlice";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import PremiumBadge from '../minicomponents/PremiumBadge';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
@@ -110,12 +111,20 @@ const Profile = () => {
     setShowMoreMenu(false);
   };
 
+  // Format createdAt as "Month Year" (e.g. "August 2025")
+  const formatMonthYear = (dateValue) => {
+    if (!dateValue) return '';
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  };
+
   if (isLoadingProfile) {
     return <LoadingShimmer type="profile-page" />;
   }
 
   if (isErrorProfile) {
-    return <div className="p-4 text-center text-red-500">Error: {profileQueryError.message}</div>;
+    return <div className="p-4 text-center text-blue-800">Error: {profileQueryError.message}</div>;
   }
 
   // Display message if the user is blocked
@@ -135,7 +144,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserPosts) {
-          return <div className="p-4 text-center text-red-500">Error loading posts: {userPostsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError.message}</div>;
         }
         if (userPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No posts available.</div>;
@@ -146,7 +155,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserComments) {
-          return <div className="p-4 text-center text-red-500">Error loading comments: {userCommentsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError.message}</div>;
         }
         if (userComments.length === 0) {
           return <div className="p-4 text-center text-gray-500">No comments available.</div>;
@@ -157,7 +166,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorLikedPosts) {
-          return <div className="p-4 text-center text-red-500">Error loading liked posts: {likedPostsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError.message}</div>;
         }
         if (likedPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No liked posts available.</div>;
@@ -168,7 +177,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorBookmarks) {
-          return <div className="p-4 text-center text-red-500">Error loading bookmarks: {bookmarksError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError.message}</div>;
         }
         if (bookmarks.length === 0) {
           return <div className="p-4 text-center text-gray-500">No bookmarks available.</div>;
@@ -185,7 +194,7 @@ const Profile = () => {
         
         <div className="sticky top-0 z-[102] bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg border-b border-white border-opacity-30">
           <button onClick={() => window.history.back()} className="p-4 text-gray-800 hover:text-blue-600 transition duration-200"><IoIosArrowBack size="20px" /></button>
-          <span className="text-xl font-bold text-gray-800">{profileUser?.username} </span><span className="text-gray-600 text-xs">{userPosts.length} posts</span>
+          <span className="text-xl font-bold text-gray-800">{profileUser?.username}{profileUser?.premium?.isActive && <PremiumBadge />}</span><span className="text-gray-700 text-xs">{userPosts.length} posts</span>
         </div>
         {/* Cover and Profile Picture */}
         <div className="relative">
@@ -214,7 +223,7 @@ const Profile = () => {
           {currentUser?._id === profileUser?._id ? (
             <div className="flex gap-2">
               <button
-                className=" bg-blue-500 text-white text-xs px-4 py-2 rounded-full font-semibold hover:bg-blue-600 transition duration-200 shadow-md"
+                className=" bg-blue-600 text-white text-xs px-4 py-2 rounded-full font-semibold hover:bg-blue-700 transition duration-200 shadow-md"
                 onClick={() => setShowEditProfileModal(true)}
               >
               Edit profile
@@ -233,8 +242,8 @@ const Profile = () => {
                   ${profileUser?.isFollowingByCurrentUser
                     ? (isHoveringFollow
                       ? "bg-white text-red-500 border border-red-500  hover:text-red-600"
-                      : "!bg-blue-700 text-white hover:bg-blue-600")
-                    : "!bg-blue-700 text-white hover:bg-blue-600"
+                      : "!bg-blue-700 text-white hover:bg-blue-700")
+                    : "!bg-blue-700 text-white hover:bg-blue-700"
                   }
                 `}
                 onClick={handleFollowToggle}
@@ -278,8 +287,9 @@ const Profile = () => {
          <div>
          <div className="flex justify-between">
             <div>
-              <h1 className="text-xl font-extrabold text-gray-800">{profileUser?.fullName || profileUser?.username}</h1>
-              <p className="text-gray-600 text-sm">@{profileUser?.username}</p>
+             
+              <h1 className="text-xl font-extrabold text-gray-800">{profileUser?.fullName || profileUser?.username}{profileUser?.premium.isActive && <PremiumBadge/>}</h1>
+              <p className="text-gray-700 text-sm">@{profileUser?.username}</p>
             </div>
           </div>
 
@@ -287,9 +297,9 @@ const Profile = () => {
             {profileUser?.bio || 'No bio available.'}
           </p>
 
-          <div className="text-sm flex gap-4 text-gray-600">
+          <div className="text-sm flex gap-4 text-gray-700">
             
-            <span>Joined January 2024</span>
+            <span>{profileUser ? `Joined ${formatMonthYear(profileUser.createdAt)}` : ''}</span>
           </div>
 
           <div className="flex gap-4 mt-1 text-sm text-gray-700">
@@ -336,25 +346,25 @@ const Profile = () => {
         {/* Tabs */}
         <div className="flex border-b border-white border-opacity-30 mt-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-lg shadow-lg m-4">
           <button 
-            className={`flex-1 py-3 font-semibold ${activeTab === 'posts' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            className={`flex-1 py-3 font-semibold ${activeTab === 'posts' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-700'} hover:text-blue-800 transition duration-200`}
             onClick={() => setActiveTab('posts')}>
             Posts
           </button>
           <button 
-            className={`flex-1 py-3 font-semibold ${activeTab === 'replies' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            className={`flex-1 py-3 font-semibold ${activeTab === 'replies' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-700'} hover:text-blue-800 transition duration-200`}
             onClick={() => setActiveTab('replies')}>
             Replies
           </button>
           {currentUser?._id === profileUser?._id && (
           <button 
-            className={`flex-1 py-3 font-semibold ${activeTab === 'likes' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            className={`flex-1 py-3 font-semibold ${activeTab === 'likes' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-700'} hover:text-blue-800 transition duration-200`}
             onClick={() => setActiveTab('likes')}>
             Likes
           </button>
           )}
           {currentUser?._id === profileUser?._id && (
           <button 
-            className={`flex-1 py-3 font-semibold ${activeTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-600'} hover:text-blue-800 transition duration-200`}
+            className={`flex-1 py-3 font-semibold ${activeTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-700'} hover:text-blue-800 transition duration-200`}
             onClick={() => setActiveTab('bookmarks')}>
             Bookmarks
           </button>

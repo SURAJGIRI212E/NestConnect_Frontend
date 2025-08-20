@@ -3,9 +3,12 @@ import Home from './components/Home';
 import { Login } from './components/Login';
 import { Premium } from './components/Premium';
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LoadingShimmer from './components/LoadingShimmer';
+import Register from './components/Register';
+import ResetPassword from './components/ResetPassword';
+
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -66,48 +69,69 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <SocketProvider>
-          <div className="App no-scrollbar overflow-auto">
-            <Routes>
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/home/*" 
-                element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/premium" 
-                element={
-                  <ProtectedRoute>
-                    <Premium />
-                  </ProtectedRoute>
-                } 
-              />
-             
-              <Route 
-                path="/" 
-                element={<Navigate to="/home" />} 
-              />
-<Route path="*" element={<Navigate to="/home" replace />} />
+  // Use the AuthContext to check if auth check is done
+  const { hasCheckedAuth } = useAuth();
 
-            </Routes>
-          </div>
-        </SocketProvider>
-      </Router>
-    </AuthProvider>
+  // Only render routes after auth check is complete
+  if (!hasCheckedAuth) {
+    return <LoadingShimmer />;
+  }
+
+  return (
+    <Router>
+      <SocketProvider>
+        <div className="App no-scrollbar overflow-auto">
+          <Routes>
+            <Route 
+              path="/login" 
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/reset-password/:token" 
+              element={
+                <PublicRoute>
+                  <ResetPassword />
+                </PublicRoute>
+              } 
+            />
+             <Route 
+              path="/register" 
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/home/*" 
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/premium" 
+              element={
+                <ProtectedRoute>
+                  <Premium />
+                </ProtectedRoute>
+              } 
+            />
+           
+            <Route 
+              path="/" 
+              element={<Navigate to="/home" />} 
+            />
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </div>
+      </SocketProvider>
+    </Router>
   );
 }
 

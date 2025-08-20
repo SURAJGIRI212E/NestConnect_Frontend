@@ -33,6 +33,7 @@ export const Chat = () => {
   const { selectedPeople } = useSelector(state => state.chat);
   const { isConnected } = useSocket();
 
+
   if (!selectedPeople?.length) return null;
 
   return (
@@ -72,7 +73,7 @@ export const Chat = () => {
       />
 
       {!isConnected && (
-        <div className="absolute bottom-0 left-0 right-0 bg-red-500 text-white text-center py-1 text-sm">
+        <div className="absolute bottom-0 left-0 right-0 bg-red-600 text-white text-center py-1 text-sm">
           Disconnected. Reconnecting...
         </div>
       )}

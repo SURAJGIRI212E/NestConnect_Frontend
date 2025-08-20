@@ -43,7 +43,7 @@ export const Feed = () => {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  if (isError) return <div className="p-4 text-center text-red-500">Error loading feed: {error.message}</div>;
+  if (isError) return <div className="p-4 text-center text-blue-800">Error loading feed: {error.message}</div>;
 
   return (
     
@@ -54,9 +54,7 @@ export const Feed = () => {
         <div className="w-[50%] py-3 hover:bg-white/50">
           <h1 className="text-xs cursor-pointer text-center">For you</h1>
         </div>
-        <div className="w-[50%] py-3 hover:bg-white/50">
-          <h1 className="text-xs cursor-pointer text-center">Following</h1>
-        </div>
+       
       </div>
       <CreatePost/>
       {isLoading && posts.length === 0 ? (

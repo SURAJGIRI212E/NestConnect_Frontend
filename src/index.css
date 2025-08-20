@@ -5,23 +5,22 @@
 @layer utilities {
   
 .scrollbar::-webkit-scrollbar {
-  width: 4px;
-  
+  width: 4px; 
 }
 
 .scrollbar::-webkit-scrollbar-track {
   border-radius: 100vh;
-  background: rgb(226, 230, 230);
+  
 }
 
 .scrollbar::-webkit-scrollbar-thumb {
-  background: #929292;
+  background: #528ed7dc;
   border-radius: 100vh;
   margin:0px 10px ;
 }
 
 .scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #141314;
+  background: #1958f7;
 }
 }
 .no-scrollbar::-webkit-scrollbar {

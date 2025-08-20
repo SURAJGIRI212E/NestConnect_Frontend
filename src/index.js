@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { AuthProvider } from './context/AuthContext';
 import { Provider } from 'react-redux';
 import store from './redux/store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -26,7 +27,9 @@ root.render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-      <App />
+          <AuthProvider>
+            <App />
+          </AuthProvider>
         </ToastProvider>
       </QueryClientProvider>
     </Provider>

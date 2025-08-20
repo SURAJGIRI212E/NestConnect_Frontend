@@ -58,11 +58,11 @@ const Toast = ({ message, type, onClose }) => {
       borderColor = 'border-green-600';
       break;
     case 'error':
-      bgColor = 'bg-red-500';
+      bgColor = 'bg-red-600';
       borderColor = 'border-red-600';
       break;
     case 'info':
-      bgColor = 'bg-blue-500';
+      bgColor = 'bg-blue-600';
       borderColor = 'border-blue-600';
       break;
     case 'warning':

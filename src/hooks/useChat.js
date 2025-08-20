@@ -21,6 +21,7 @@ export const useChat = () => {
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const prevMessagesLengthRef = useRef(messages.length); // Ref to store previous messages length
   const dispatch = useDispatch();
   const { selectedPeople, conversations } = useSelector(state => state.chat);
   const { socket, emitEvent, isUserOnline, socketError } = useSocket();
@@ -65,9 +66,12 @@ export const useChat = () => {
     };
   }, [conversationId, socket, messages]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when new messages arrive, but not when messages are deleted.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > prevMessagesLengthRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLengthRef.current = messages.length; // Update for next render
   }, [messages]);
   
   // Get or create conversation when selectedPeople changes
@@ -137,7 +141,6 @@ export const useChat = () => {
       }
     };
     const handleMessageDeleted = ({ messageId }) => {
-      console.log('Message deleted:', messageId);
       setMessages(prev => prev.filter(msg => msg._id !== messageId));
     };
     // Register event handlers listening to socket events

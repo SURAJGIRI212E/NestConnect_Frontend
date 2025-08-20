@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logo from '../logo.png';
+import axiosInstance from '../utils/axios';
 
 export const Login = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,12 @@ export const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef();
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -38,6 +45,33 @@ export const Login = () => {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (cooldown > 0) {
+      cooldownRef.current = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    }
+    return () => clearTimeout(cooldownRef.current);
+  }, [cooldown]);
+
+  // Forgot password handler
+  const handleForgotPassword = async () => {
+    setForgotMsg('');
+    setForgotLoading(true);
+    try {
+      const response = await axiosInstance.post('/api/auth/forgetPassword', { email: forgotEmail });
+      if (response.data.status === 'success') {
+        setForgotMsg('Password reset link sent to your email.');
+        setCooldown(120); // Start 2-minute cooldown
+      } else {
+        setForgotMsg(response.data.message || 'Failed to send reset link.');
+      }
+    } catch (err) {
+      setForgotMsg(err.response?.data?.message || 'Failed to send reset link.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -81,25 +115,60 @@ export const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 text-white py-2 rounded-full font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50 shadow-md"
+            className="w-full bg-blue-600 text-white py-2 rounded-full font-semibold hover:bg-blue-700 transition duration-200 disabled:opacity-50 shadow-md"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
         <div className="mt-4 text-center">
-          <button className="text-blue-700 hover:underline bg-transparent border-none cursor-pointer">
+          <button className="text-blue-600 hover:underline bg-transparent border-none cursor-pointer" onClick={() => setShowForgotModal(true)}>
             Forgot password?
           </button>
         </div>
         <div className="mt-6 text-center">
           <p className="text-gray-700">
-            Don't have an account?{" "}
-            <button className="text-blue-700 hover:underline bg-transparent border-none cursor-pointer">
+            Don't have an account?{' '}
+            <button onClick={() => navigate('/register')} className="text-blue-700 hover:underline bg-transparent border-none cursor-pointer">
               Sign up
             </button>
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 shadow-xl w-96">
+            <h2 className="text-xl font-bold mb-4 text-center">Forgot Password</h2>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={e => setForgotEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+              disabled={forgotLoading}
+            />
+            <button
+              onClick={handleForgotPassword}
+              disabled={forgotLoading || !forgotEmail || cooldown > 0}
+              className="w-full bg-blue-600 text-white py-2 rounded-full font-semibold hover:bg-blue-700 transition duration-200 disabled:opacity-90 mb-2"
+            >
+              {forgotLoading
+                ? 'Sending...'
+                : cooldown > 0
+                  ? `Wait ${cooldown}s to resend`
+                  : 'Send Reset Link'}
+            </button>
+            {forgotMsg && <div className="text-center text-green-700 mb-2">{forgotMsg}</div>}
+            <button
+              onClick={() => { setShowForgotModal(false); setForgotEmail(''); setForgotMsg(''); }}
+              className="w-full bg-gray-300 text-gray-800 py-2 rounded-full font-semibold mt-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

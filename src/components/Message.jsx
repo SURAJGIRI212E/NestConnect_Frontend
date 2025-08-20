@@ -2,28 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { IoIosSearch } from "react-icons/io";
 import { IoClose } from "react-icons/io5";
 import { IoTrashBin } from "react-icons/io5";
-import useravator from "../avator2.jpg";
+import useravator from "../defaultavator.png";
 import axiosInstance from '../utils/axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPeople, setIsChatOpen, updateConversationWithMessage, deleteConversation } from '../redux/slices/chatSlice';
 import { useSocket } from '../context/SocketContext';
+import { useSearchUsersQuery } from '../hooks/useUserActions'; // Import the new hook
+import PremiumBadge from '../minicomponents/PremiumBadge';
 
 export const Message = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPeopleState, setSelectedPeopleState] = useState([]);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
-  const [searchedUsers, setSearchedUsers] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState(null);
+  const [warning, setWarning] = useState(''); // Add this state
   const conversations = useSelector(state => state.chat.conversations);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
-  const [conversationsError, setConversationsError] = useState(null);
+  // conversationsError is only displayed (never set here), use a simple variable to avoid unused setter
+  const conversationsError = null;
 
   const dispatch = useDispatch();
 
   // Use socket context instead of creating new socket
   const { socket } = useSocket();
+
+  // Use the new hook for searching users
+  const { data: usersData, isLoading: isSearching, isError: searchError, error: searchErrorDetails } = useSearchUsersQuery(modalSearchQuery);
+  const searchedUsers = usersData?.users || [];
 
   useEffect(() => {
     if (!socket) return;
@@ -57,46 +62,6 @@ export const Message = () => {
     };
   }, [socket, dispatch]);
 
-
-  useEffect(() => {
-    if (modalSearchQuery.length < 2) {
-      setSearchedUsers([]);
-      setIsSearching(false);
-      setSearchError(null);
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchError(null);
-
-    const handler = setTimeout(async () => {
-      try {
-        const response = await axiosInstance.get('/api/users/search', {
-          params: { query: modalSearchQuery }
-        });
-        if (response.data.status === 'success') {
-          const filteredUsers = response.data.data.users.filter(
-            (user) => !selectedPeopleState.some(selected => selected._id === user._id)
-          );
-          setSearchedUsers(filteredUsers);
-        } else {
-          setSearchedUsers([]);
-          setSearchError(response.data.message || 'Error searching for users');
-        }
-      } catch (error) {
-        console.error('Error searching users:', error);
-        setSearchedUsers([]);
-        setSearchError(error.response?.data?.message || 'Failed to fetch users');
-      } finally {
-        setIsSearching(false);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [modalSearchQuery, selectedPeopleState]);
-
   useEffect(() => {
     // Just handle loading state based on conversations
     setIsLoadingConversations(conversations.length === 0);
@@ -104,8 +69,16 @@ export const Message = () => {
 
   const handlePersonSelect = (person) => {
     if (!selectedPeopleState.find(p => p._id === person._id)) {
-      setSelectedPeopleState([...selectedPeopleState, person]);
-      setSearchedUsers(searchedUsers.filter(user => user._id !== person._id));
+       if (selectedPeopleState.length >= 1) {
+    setWarning('Only one user can be selected.');
+    setTimeout(() => setWarning(''), 2000); // Clear warning after 2s
+    return;
+  }
+  setSelectedPeopleState([person]);
+  setWarning('');
+      // Remove selected person from searchedUsers to prevent re-selection
+      // This needs to be done manually as useSearchUsersQuery won't re-filter its results based on local state.
+      // For a more robust solution, we might consider a local state management for searched users within the modal.
     }
   };
 
@@ -113,9 +86,7 @@ export const Message = () => {
     const personToRemove = selectedPeopleState.find(p => p._id === personId);
     if (personToRemove) {
       setSelectedPeopleState(selectedPeopleState.filter(p => p._id !== personId));
-      if (modalSearchQuery.length >= 2 && personToRemove.fullName.toLowerCase().includes(modalSearchQuery.toLowerCase())) {
-        setSearchedUsers([personToRemove, ...searchedUsers]);
-      }
+      // If the removed person was part of the current search results, add them back (optional, depends on UX)
     }
   };
 
@@ -131,8 +102,6 @@ export const Message = () => {
     setIsModalOpen(false);
     setSelectedPeopleState([]);
     setModalSearchQuery('');
-    setSearchedUsers([]);
-    setSearchError(null);
   };
 
   const handleConversationClick = (conversation) => {
@@ -148,6 +117,7 @@ export const Message = () => {
 
   const handleDeleteConversation = async (conversationId, e) => {
     e.stopPropagation(); // Prevent triggering conversation click
+    alert('Are you sure you want to delete this conversation? This action cannot be undone.');
     try {
       await axiosInstance.delete(`/api/chat/conversations/${conversationId}`);
       dispatch(deleteConversation({ conversationId }));
@@ -166,18 +136,24 @@ export const Message = () => {
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
+  // Filter searchedUsers based on selectedPeopleState directly here for display
+ 
+  const filteredSearchedUsers = searchedUsers.filter(
+    (user) => !selectedPeopleState.some(selected => selected._id === user._id)
+  );
+
   return (
     <div className="flex flex-col w-full h-full bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg  shadow-lg border border-white border-opacity-30">
       <div className="sticky top-0  backdrop-blur-3xl bg-blue/95 p-4 rounded-xl">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">Messages</h1>
-          <button onClick={() => setIsModalOpen(true)} className="text-xs px-3 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">
+          <button onClick={() => setIsModalOpen(true)} className="text-xs px-3 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700">
             New Message
           </button>
         </div>
         
         <div className="flex items-center py-2 px-4 text-sm bg-gray-100 rounded-full border border-transparent 
-          focus-within:border-blue-500 focus-within:bg-inherit focus-within:text-blue-500">
+          focus-within:border-blue-500 focus-within:bg-inherit focus-within:text-blue-600">
           <IoIosSearch size="18px"/>
           <input 
             type="search" 
@@ -190,17 +166,17 @@ export const Message = () => {
       </div>
 
       <div className="flex-1 p-4">
-        {isLoadingConversations && <div className="text-center text-gray-500">Loading conversations...</div>}
-        {conversationsError && <div className="text-center text-red-500">{conversationsError}</div>}
+        {isLoadingConversations && <div className="text-center text-gray-700">Loading conversations...</div>}
+        {conversationsError && <div className="text-center text-blue-800">{conversationsError}</div>}
         {!isLoadingConversations && conversations.length === 0 && !conversationsError && (
-          <p className="text-center text-gray-500">No conversations yet. Start a new message!</p>
+          <p className="text-center text-gray-700">No conversations yet. Start a new message!</p>
         )}
         {!isLoadingConversations && conversations.length > 0 && (
           <div className="space-y-4">
             {conversations.map(conversation => (
               <div 
                 key={conversation._id} 
-                className="flex items-center gap-2 p-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg  shadow-lg rounded-lg cursor-pointer group hover:bg-opacity-30 transition-colors duration-200"
+                className="flex items-center gap-2 p-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-lg rounded-lg cursor-pointer group hover:bg-opacity-30 transition-colors duration-200"
                 onClick={() => handleConversationClick(conversation)}
               >
                 <img 
@@ -212,10 +188,9 @@ export const Message = () => {
                   <div className="font-bold">
                     {conversation.participants
                       .filter(p => p._id !== localStorage.getItem('userId'))
-                      .map(p => p.username)
-                      .join(', ')}
+                      .map(p => <span key={p._id}>{p.username}{p.premium?.isActive && <PremiumBadge />}</span>)}
                   </div>
-                  <div className="text-gray-600 text-sm">
+                  <div className="text-gray-700 text-sm">
                     {conversation.lastMessage ? (
                       <div className="flex justify-between items-center">
                         <span className='flex-1 whitespace-nowrap overflow-hidden text-ellipsis min-w-0'>
@@ -223,7 +198,7 @@ export const Message = () => {
                             ? 'Image' 
                             : conversation.lastMessage.content}
                         </span>
-                        <span className="text-xs text-gray-500 ml-2">{formatMessageTime(conversation.lastMessage.createdAt)}</span>
+                        <span className="text-xs text-gray-700 ml-2">{formatMessageTime(conversation.lastMessage.createdAt)}</span>
                       </div>
                     ) : (
                       'Start a conversation'
@@ -232,13 +207,13 @@ export const Message = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {conversation.currentUserUnreadCount > 0 && (
-                    <span className="ml-auto bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    <span className="ml-auto bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
                       {conversation.currentUserUnreadCount}
                     </span>
                   )}
                   <button
                     onClick={(e) => handleDeleteConversation(conversation._id, e)}
-                    className=" flex items-center justify-center w-8 h-8 text-gray-500 hover:text-red-500 hover:bg-red-100 rounded-full transition-colors"
+                    className=" flex items-center justify-center w-8 h-8 text-gray-700 hover:text-red-500 hover:bg-red-100 rounded-full transition-colors"
                     title="Delete conversation"
                   >
                     <IoTrashBin size="18px" />
@@ -265,7 +240,7 @@ export const Message = () => {
               </div>
               <button 
                 onClick={handleNextClick}
-                className="px-4 py-1 bg-blue-500 text-white rounded-full disabled:opacity-50"
+                className="px-4 py-1 bg-blue-600 text-white rounded-full disabled:opacity-50"
                 disabled={selectedPeopleState.length === 0}
               >
                 Next
@@ -295,22 +270,33 @@ export const Message = () => {
                 />
               </div>
 
-              {isSearching && <div className="text-center text-gray-500 mt-4">Searching...</div>}
-              {searchError && <div className="text-center text-red-500 mt-4">{searchError}</div>}
-              {!isSearching && !searchError && modalSearchQuery.length > 1 && searchedUsers.length === 0 && (
-                <div className="text-center text-gray-500 mt-4">No users found.</div>
+              {isSearching && <div className="text-center text-gray-700 mt-4">Searching...</div>}
+              {searchError && <div className="text-center text-blue-800 mt-4">Error searching users: {searchErrorDetails.message}</div>}
+              {!isSearching && !searchError && modalSearchQuery.length > 1 && filteredSearchedUsers.length === 0 && (
+                <div className="text-center text-gray-700 mt-4">No users found.</div>
               )}
               {!isSearching && !searchError && modalSearchQuery.length < 2 && (
-                <div className="text-center text-gray-500 mt-4">Start typing to search for users.</div>
+                <div className="text-center text-gray-700 mt-4">Start typing to search for users.</div>
+              )}
+
+              {warning && (
+                <div className="text-center text-red-700 mt-2">{warning}</div>
               )}
 
               <div className="mt-2 max-h-[300px] overflow-y-auto">
-                {searchedUsers.map(person => (
-                  <div key={person._id} onClick={() => handlePersonSelect(person)} className="flex items-center gap-2 p-3 hover:bg-white hover:bg-opacity-30 rounded-lg cursor-pointer transition-colors duration-200">
+                {filteredSearchedUsers.map(person => (
+                  <div
+                    key={person._id}
+                    onClick={() => handlePersonSelect(person)}
+                    className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors duration-200
+                      hover:bg-white hover:bg-opacity-30
+                      ${selectedPeopleState.length >= 1 ? 'opacity-50' : ''}`
+                    }
+                  >
                     <img src={person.avatar || useravator} alt={person.fullName} className="w-8 h-8 rounded-full"/>
                     <div>
                       <div className="font-bold">{person.fullName}</div>
-                      <div className="text-gray-500 text-sm">{person.username}</div>
+                      <div className="text-gray-700 text-sm">{person.username}</div>
                     </div>
                   </div>
                 ))}

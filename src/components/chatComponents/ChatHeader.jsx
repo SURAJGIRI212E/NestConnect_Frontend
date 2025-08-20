@@ -1,10 +1,12 @@
 import { IoClose } from "react-icons/io5";
 import { CiVideoOn,CiVideoOff } from "react-icons/ci";
 
-import useravator from "../../avator2.jpg";
+import useravator from "../../defaultavator.png";
 import { useSocket } from "../../context/SocketContext";
 import React, { useState, useEffect } from 'react';
 import { SpinnerShimmer } from "../LoadingShimmer";
+import PremiumBadge from '../../minicomponents/PremiumBadge';
+import { Link } from "react-router-dom";
 
 
 export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
@@ -21,10 +23,14 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
     }
   }, [warningMessage]);
 
+  // Safely build the profile link to avoid reading .user when profile is null
+  const profileLink = profile?.user ? `/home/profile/${profile.user.username}` : '#';
+
+  // Show spinner while loading
   if (isLoading) return (
     <div className="flex justify-between items-center border-b pb-2 m-4">
    <SpinnerShimmer/>
-      <button onClick={onClose} className="text-gray-500 hover:text-gray-600">
+      <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
         <IoClose size="24px" />
       </button>
     </div>
@@ -32,8 +38,8 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
 
   if (error) return (
     <div className="flex justify-between items-center border-b pb-2">
-      <p className="text-red-500 ">{error}</p>
-      <button onClick={onClose} className="text-blue-500  hover:text-red-700">
+      <p className="text-blue-500 ">{error}</p>
+      <button onClick={onClose} className="text-blue-600  hover:text-red-700">
         <IoClose size="24px" />
       </button>
     </div>
@@ -46,7 +52,8 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
       <div className="flex justify-between items-center border-b pb-2">
         <div className="flex items-center">
         
-          {profile && profile.user && (
+         <Link to={profileLink}>
+         {profile && profile.user && (
             <div className="flex items-center gap-3 mt-1">
               <img 
                 src={profile.user.avatar || useravator} 
@@ -54,19 +61,15 @@ export const ChatHeader = ({ profile, isLoading, error, onClose }) => {
                 className="w-8 h-8 rounded-full"
               />
               <div>
-                <h2 className="text-lg font-bold">
+                <h2 className="text-lg font-bold flex items-center">
                   {profile.user.fullName || profile.user.username}
+                  {profile.user.premium?.isActive && <PremiumBadge />}
                 </h2> 
-                <div className="text-sm text-gray-600">
-                  {profile.followersCount !== undefined && 
-                    <span>{profile.followersCount} Followers</span>}
-                  {profile.followingCount !== undefined && 
-                    <span className="ml-2">{profile.followingCount} Following</span>}
-                </div>
+                
                
               </div>
             </div>
-          )}
+          )}</Link>
         </div>
 
         <div className="flex items-center gap-2 p-2">

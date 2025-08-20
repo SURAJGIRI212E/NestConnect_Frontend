@@ -87,7 +87,7 @@ export const SinglePostView = () => {
           <div className="ml-2 pl-2">
             <button
               onClick={() => toggleReplies(comment._id)}
-              className="text-blue-500 hover:underline text-sm mt-1 mb-1 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200"
+              className="text-blue-600 hover:underline text-sm mt-1 mb-1 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200"
             >
               {expandedComments.has(comment._id) ? 'Hide Replies' : `View ${comment.replies.length} Replies`}
             </button>
@@ -104,10 +104,10 @@ export const SinglePostView = () => {
 
   return (
     <div className="flex flex-col min-h-screen text-zinc-800 ">
-      <div className="sticky top-0 z-10 bg-blue-200   px-4 py-3 flex items-center">
+      <div className="sticky top-0  bg-blue-200 px-4 py-3 flex items-center">
         <button
           onClick={() => navigate(-1)}
-          className="mr-4 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          className="mr-4 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -121,7 +121,7 @@ export const SinglePostView = () => {
         <Tweet tweet={post} isBookmarked={false} /> {/* Assuming isBookmarked will be passed if needed */}
         
         {/* Post Details edited or created*/}
-        <div className="text-gray-600 text-xs px-4">
+        <div className="text-gray-700 text-xs px-4">
           <p>Posted on: {post?.createdAt ? new Date(post.createdAt).toLocaleString() : "N/A"}</p>
           {post?.edits?.editedAt && <p>Last edited: {new Date(post.edits.editedAt).toLocaleString()}</p>}
         </div>
@@ -138,7 +138,7 @@ export const SinglePostView = () => {
           {areCommentsLoading && <div className="text-zinc-800 text-center">Loading comments...</div>}
           {areCommentsError && <div className="text-red-700 text-center">Error loading comments: {commentsError.message}</div>}
           {comments.length === 0 && !areCommentsLoading && (
-            <p className="text-gray-600 text-center">No comments yet. Be the first to reply!</p>
+            <p className="text-gray-700 text-center">No comments yet. Be the first to reply!</p>
           )}
           <div className="">
             {renderComments(sortedComments)} {/* Render comments using the recursive function */}

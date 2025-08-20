@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { IoClose } from "react-icons/io5";
 import axiosInstance from "../utils/axios";
-import { useAuth } from "../context/AuthContext";
+// import { useAuth } from "../context/AuthContext";
 
 export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated }) => {
-  const { user: currentUser } = useAuth();
+  // const { user: currentUser } = useAuth();
   const [fullName, setFullName] = useState(currentProfileUser?.fullName || "");
   const [bio, setBio] = useState(currentProfileUser?.bio || "");
   const [avatar, setAvatar] = useState(null);
@@ -74,7 +74,7 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-zinc-200 to-blue-300  flex items-center justify-center z-[200]">
-      <div className="bg-white/50 bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-lg rounded-2xl w-[500px] max-h-[90vh] flex flex-col p-6 border border-white border-opacity-30 relative">
+      <div className="bg-blue-300/20 bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-lg rounded-2xl w-[500px] max-h-[90vh] flex flex-col p-6 border border-white border-opacity-30 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-700 hover:text-red-500 rounded-full p-2 transition duration-200"
@@ -131,12 +131,12 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
             )}
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {/* {error && <p className="text-red-600 text-sm">{error}</p>} */}
           {success && <p className="text-green-700 text-sm">{success}</p>}
 
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-700 transition duration-200 disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Updating..." : "Update Profile"}

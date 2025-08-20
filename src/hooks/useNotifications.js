@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
+import { useAuth } from '../context/AuthContext';
 
 const fetchNotifications = async (page = 1) => {
   const res = await axiosInstance.get(`/api/notifications?page=${page}`);
@@ -12,6 +13,10 @@ const fetchUnreadCount = async () => {
 };
 
 export const useNotifications = (page = 1) => {
+   const { user } = useAuth();
+  const enabled = !!user?._id;
+
+
   const queryClient = useQueryClient();
 
   // Notifications list
@@ -23,10 +28,9 @@ export const useNotifications = (page = 1) => {
     queryKey: ['notifications', page],
     queryFn: () => fetchNotifications(page),
     keepPreviousData: true,
-    enabled: false, // Disable by default
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnMount: false,
     refetchOnWindowFocus: false,
+    enabled, // Only fetch if user is authenticated
   });
 
   // Unread count
@@ -37,10 +41,9 @@ export const useNotifications = (page = 1) => {
   } = useQuery({
     queryKey: ['notifications-unread'],
     queryFn: fetchUnreadCount,
-    enabled: false, // Disable by default
     staleTime: 1000 * 10, // 10 seconds for unread count as it might change more frequently
-    refetchOnMount: false,
     refetchOnWindowFocus: false,
+    enabled, // Only fetch if user is authenticated
   });
 
   // Mark all as read

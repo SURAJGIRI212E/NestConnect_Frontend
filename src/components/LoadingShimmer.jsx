@@ -113,15 +113,15 @@ const LoadingShimmer = ({ className, type }) => {
         );
       default:
         return (
-          <div className="h-32 w-32 rounded-xl animate-skeleton relative overflow-hidden">
-            <div className="absolute inset-0 animate-shimmer-flash"></div>
+          <div className="h-20 w-20 animate-spin rounded-full border-t-4 border-b-4   border-blue-600 relative overflow-hidden">
+            <div className="animate-spin absolute inset-0  animate-shimmer-flash  "></div>
           </div>
         );
     }
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-zinc-200 to-blue-700 ${className}`}>
+    <div className={`flex flex-col items-center justify-center min-h-screen  ${className}`}>
       {renderShimmerContent()}
     </div>
   );

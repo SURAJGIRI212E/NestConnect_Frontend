@@ -1,14 +1,14 @@
 import axios from 'axios';
-import { API_URL } from '../config/config';
+
 import { showGlobalToast } from '../components/Toast';
 
 const instance = axios.create({
-  baseURL: API_URL,
+  baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
   timeout: 30000, // Increase timeout for mobile networks
   headers: {
     'Content-Type': 'application/json',
-    
+    'ngrok-skip-browser-warning': 'any', // ✅ Add this line
   }
 });
 
@@ -30,16 +30,19 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only redirect to login if we're not already on the login page
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      localStorage.removeItem('userId');
-      window.location.href = '/login';
-    }
+    // Use regex to match /reset-password and /reset-password/:token
+   const publicPaths = ['/login', '/register', '/reset-password'];
+    const isPublicRoute = publicPaths.some(path => window.location.pathname.includes(path));
 
-    // Display specific error message from backend if available
-    if (error.response?.data?.message && showGlobalToast) {
+    if (
+      error.response?.status === 401 &&
+      !isPublicRoute &&
+      showGlobalToast
+    ) {
+      showGlobalToast(error.response.data.message || 'Please login to access this resource.', 'error');
+    } else if (!isPublicRoute && error.response?.data?.message && showGlobalToast) {
       showGlobalToast(error.response.data.message, 'error');
-    } else if (showGlobalToast) {
+    } else if (!isPublicRoute && showGlobalToast) {
       showGlobalToast(error.message || 'An unexpected error occurred.', 'error');
     }
 

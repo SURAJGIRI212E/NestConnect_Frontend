@@ -19,11 +19,11 @@ const Bookmarks = () => {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="sticky top-0  backdrop-blur-3xl bg-gradient-to-br from-zinc-200 to-blue-300 rounded-3xl p-4">
+      <div className="backdrop-blur-3xl bg-gradient-to-br from-zinc-200 to-blue-300 rounded-3xl p-4">
         <h1 className="text-xl font-bold mb-4">Bookmarks</h1>
         
         <div className="flex items-center py-2 px-4 text-sm bg-gray-100 rounded-full border border-transparent 
-          focus-within:border-blue-500 focus-within:bg-inherit focus-within:text-blue-500">
+          focus-within:border-blue-500 focus-within:bg-inherit focus-within:text-blue-600">
           <IoIosSearch size="18px"/>
           <input 
             type="search" 
@@ -37,7 +37,7 @@ const Bookmarks = () => {
 
       <div className="flex-1">
         {isLoadingBookmarks && ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />))}
-        {isErrorBookmarks && <div className="p-4 text-center text-red-500">Error loading bookmarks: {bookmarksError.message}</div>}
+        {isErrorBookmarks && <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError.message}</div>}
         {!isLoadingBookmarks && !isErrorBookmarks && filteredBookmarks.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
             <h2 className="text-xl font-bold mb-2">No bookmarks found.</h2>

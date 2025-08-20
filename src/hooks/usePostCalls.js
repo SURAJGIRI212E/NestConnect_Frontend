@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDispatch, useSelector } from 'react-redux';
 import axiosInstance from '../utils/axios';
-import { addPost, deletePostFromState, setPosts, updatePostInState } from '../redux/slices/postSlice';
+import { addPost, deletePostFromState, updatePostInState } from '../redux/slices/postSlice';
 import { updatePostCache } from '../utils/postCacheHelpers'; // Import the new shared helper
 
 const POST_API_BASE_URL = '/api/posts';
@@ -57,6 +57,11 @@ export const usePostCalls = () => {
         if (!oldData) return oldData;
         return { ...oldData, posts: [newPost, ...oldData.posts] };
       });
+
+      // If the new post is a comment, invalidate the comments query for the parent post
+      if (newPost.parentPost) {
+        queryClient.invalidateQueries(['postComments', newPost.parentPost]);
+      }
     },
     onError: (error) => {
       // Error handled by Axios interceptor
@@ -183,7 +188,6 @@ export const usePostCalls = () => {
               const allQueryKeys = ['userPosts', 'likedPosts', 'hashtagPosts', 'searchPosts', 'postComments', 'userBookmarks', 'userComments'];
               for (const key of allQueryKeys) {
                   const queries = queryClient.getQueriesData({ queryKey: [key], exact: false });
-                  console.log(`[LIKE_MUTATION] Checking broad query key: ${key}, found queries:`, queries);
                   for (const [queryKeyArray, data] of queries) {
                       if (data && data.posts) {
                           const foundPost = data.posts.find(p => p._id === postId || (p.isRepost && p.originalPost?._id === postId));
@@ -469,35 +473,6 @@ export const useGetPostQuery = (postId) => {
   });
 };
 
-export const useGetPostsByHashtagQuery = (hashtag, page = 1, limit = 10) => {
-  return useQuery({
-    queryKey: ['hashtagPosts', hashtag, page, limit],
-    queryFn: async () => {
-      const response = await axiosInstance.get(`${POST_API_BASE_URL}/hashtag/${hashtag}?page=${page}&limit=${limit}`);
-      return response.data.data;
-    },
-    enabled: !!hashtag,
-    keepPreviousData: true,
-    staleTime: 1000 * 60 * 5, // Increased staleTime to 5 minutes
-    onError: (error) => {
-      // Error handled by Axios interceptor
-    },
-  });
-};
-
-export const useGetTrendingHashtagsQuery = () => {
-  return useQuery({
-    queryKey: ['trendingHashtags'],
-    queryFn: async () => {
-      const response = await axiosInstance.get(`${POST_API_BASE_URL}/trending-hashtags`);
-      return response.data.hashtags;
-    },
-    staleTime: 1000 * 60 * 15, // Increased staleTime to 15 minutes
-    onError: (error) => {
-      // Error handled by Axios interceptor
-    },
-  });
-};
 
 export const useGetUserPostsQuery = (userId, page = 1, limit = 10) => {
   return useQuery({
@@ -529,6 +504,21 @@ export const useGetOwnLikedPostsQuery = (page = 1, limit = 10) => {
     },
   });
 };
+
+export const useGetUserBookmarksQuery = (page = 1, limit = 10) => {
+  return useQuery({
+    queryKey: ['userBookmarks', page, limit],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`${USER_API_BASE_URL}/bookmarks?page=${page}&limit=${limit}`);
+      return response.data.data;
+    },
+    keepPreviousData: true,
+    staleTime: 1000 * 60 * 5, // Increased staleTime to 5 minutes
+    onError: (error) => {
+      // Error handled by Axios interceptor
+    },
+  });
+}; 
 
 export const useGetCommentsQuery = (postId, page = 1, limit = 10) => {
   return useQuery({
@@ -563,10 +553,12 @@ export const useGetUserCommentsQuery = (userId, page = 1, limit = 10) => {
 };
 
 export const useSearchPostsQuery = (query, page = 1, limit = 10) => {
+
   return useQuery({
     queryKey: ['searchPosts', query, page, limit],
     queryFn: async () => {
-      const response = await axiosInstance.get(`${POST_API_BASE_URL}/search?query=${query}&page=${page}&limit=${limit}`);
+      const encodedQuery = typeof query === 'string' ? encodeURIComponent(query.trim()) : '';
+      const response = await axiosInstance.get(`${POST_API_BASE_URL}/search?query=${encodedQuery}&page=${page}&limit=${limit}`);
       return response.data.data;
     },
     enabled: !!query,
@@ -578,17 +570,33 @@ export const useSearchPostsQuery = (query, page = 1, limit = 10) => {
   });
 };
 
-export const useGetUserBookmarksQuery = (page = 1, limit = 10) => {
+export const useGetPostsByHashtagQuery = (hashtag, page = 1, limit = 10) => {
   return useQuery({
-    queryKey: ['userBookmarks', page, limit],
+    queryKey: ['hashtagPosts', hashtag, page, limit],
     queryFn: async () => {
-      const response = await axiosInstance.get(`${USER_API_BASE_URL}/bookmarks?page=${page}&limit=${limit}`);
+      const response = await axiosInstance.get(`${POST_API_BASE_URL}/hashtag/${hashtag}?page=${page}&limit=${limit}`);
       return response.data.data;
     },
+    enabled: !!hashtag,
     keepPreviousData: true,
     staleTime: 1000 * 60 * 5, // Increased staleTime to 5 minutes
     onError: (error) => {
       // Error handled by Axios interceptor
     },
   });
-}; 
+};
+
+export const useGetTrendingHashtagsQuery = () => {
+  return useQuery({
+    queryKey: ['trendingHashtags'],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`${POST_API_BASE_URL}/trending-hashtags`);
+      return response.data.hashtags;
+    },
+    staleTime: 1000 * 60 * 15, // Increased staleTime to 15 minutes
+    onError: (error) => {
+      // Error handled by Axios interceptor
+    },
+  });
+};
+

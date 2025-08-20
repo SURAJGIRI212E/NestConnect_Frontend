@@ -40,7 +40,7 @@ export const EditPostModal = ({ post, onClose }) => {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div 
-        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative"
+        className="bg-blue-300/80  backdrop-filter backdrop-blur-lg rounded-lg shadow-xl w-full max-w-md p-6 relative"
         onClick={(e) => e.stopPropagation()} // Stop event propagation to prevent parent Tweet's onClick
       >
         <button
@@ -61,9 +61,9 @@ export const EditPostModal = ({ post, onClose }) => {
             disabled={!isEditable || updatePostMutation.isLoading}
           />
 
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+          {error && <p className="text-blue-800 text-sm mt-2">{error}</p>}
 
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-gray-700">
             <p>Edit chances left: {post.edits.editchancesleft}</p>
             {isEditable ? (
               <p>Time left to edit: {minutesLeft}m {secondsLeft}s</p>
@@ -85,7 +85,7 @@ export const EditPostModal = ({ post, onClose }) => {
               type="submit"
               className={`px-5 py-2 rounded-md text-white ${
                 isEditable && !updatePostMutation.isLoading
-                  ? 'bg-blue-500 hover:bg-blue-600'
+                  ? 'bg-blue-600 hover:bg-blue-700'
                   : 'bg-gray-400 cursor-not-allowed'
               } transition-colors`}
               disabled={!isEditable || updatePostMutation.isLoading}

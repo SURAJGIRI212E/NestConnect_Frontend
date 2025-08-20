@@ -5,7 +5,6 @@ import { updateConversationWithMessage, updateConversationUnreadCount, deleteCon
 // import { addNotification } from '../redux/slices/notiSlice';
 import { useAuth } from './AuthContext';
 import axiosInstance from '../utils/axios';
-import { SOCKET_URL } from '../config/config';
 import { useNotifications } from '../hooks/useNotifications';
 
 const SocketContext = createContext();
@@ -24,6 +23,9 @@ export const SocketProvider = ({ children }) => {
   const dispatch = useDispatch();
   const { user } = useAuth();
   const { prependNotification } = useNotifications();
+  const prependNotificationRef = useRef(prependNotification);
+  useEffect(() => { prependNotificationRef.current = prependNotification; }, [prependNotification]);
+
   // Fetch initial conversations if there is
   useEffect(() => {
     if (!user?._id) return;
@@ -39,17 +41,16 @@ export const SocketProvider = ({ children }) => {
     };
 
     fetchInitialConversations();
-  }, [user, dispatch]);
+  }, [user?._id, dispatch]);
 
-  // Initialize socket connection
+  // Initialize socket connection (only when user id becomes available)
   useEffect(() => {
     if (!user?._id || socketRef.current) return;
 
-    // Create socket instance
-    socketRef.current = io(SOCKET_URL, {
+    socketRef.current = io(process.env.REACT_APP_SOCKET_URL, {
       withCredentials: true,
       auth: { userId: user._id },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       timeout: 60000,
       reconnection: true,
       reconnectionAttempts: 5,
@@ -58,15 +59,12 @@ export const SocketProvider = ({ children }) => {
 
     const socket = socketRef.current;
 
-    // Connection event handlers
     socket.on('connect', () => {
-      console.log('Socket connected');
       setIsConnected(true);
       socket.emit('addUser', user._id);
     });
 
     socket.on('disconnect', () => {
-      console.log('Socket disconnected');
       setIsConnected(false);
     });
 
@@ -74,15 +72,11 @@ export const SocketProvider = ({ children }) => {
       setOnlineUsers(users);
     });
 
-    // Handle errors from socket
     socket.on('error', ({ message }) => {
-      console.error('Socket Error:', message);
       setSocketError(message);
-      // Clear error after some time
       setTimeout(() => setSocketError(null), 5000); 
     });
 
-    // Message handlers
     socket.on('receiveMessage', ({ message, conversationId }) => {
       const currentUserId = localStorage.getItem('userId');
       dispatch(updateConversationWithMessage({ 
@@ -93,7 +87,6 @@ export const SocketProvider = ({ children }) => {
     });
 
     socket.on('messageSent', (message) => {
-      // Don't increment unread count for own messages
       dispatch(updateConversationWithMessage({
         conversationId: message.conversationId,
         message,
@@ -106,7 +99,6 @@ export const SocketProvider = ({ children }) => {
     });
 
     socket.on('messagesRead', ({ conversationId }) => {
-      // Update the conversation to show messages as read
       dispatch(updateConversationUnreadCount({ 
         conversationId, 
         unreadCount: 0
@@ -117,20 +109,18 @@ export const SocketProvider = ({ children }) => {
       dispatch(deleteConversation({ conversationId }));
     });
 
-    // Keep-alive ping
     const pingInterval = setInterval(() => {
       if (socket.connected) {
         socket.emit('ping', user._id);
       }
     }, 30000);
 
-    // Listen for real-time notifications
     socket.on('newNotification', (notification) => {
-      prependNotification(notification);
-      // Optionally, show a toast or sound
+      if (prependNotificationRef.current) {
+        prependNotificationRef.current(notification);
+      }
     });
 
-    // Clean up
     return () => {
       clearInterval(pingInterval);
       if (socket.connected) {
@@ -138,15 +128,10 @@ export const SocketProvider = ({ children }) => {
         socket.disconnect();
       }
       socketRef.current = null;
-      socket.off('incomingCall');
-      socket.off('callAccepted');
-      socket.off('callRejected');
-      socket.off('callEnded');
-      socket.off('returningSignal');
-      socket.off('error'); // Clean up error listener
-      socket.off('newNotification'); // Clean up newNotification listener
+      socket.off('error');
+      socket.off('newNotification');
     };
-  }, [user, dispatch]);
+  }, [user?._id, dispatch]);
 
   // Handle tab visibility
   useEffect(() => {
@@ -162,81 +147,44 @@ export const SocketProvider = ({ children }) => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user]);
+  }, [user?._id]);
 
-  // Video call event listeners
+  // Only keep high-level call state management for UI (incoming, outgoing, hangup)
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    // Incoming call notification
     socket.on('incomingCall', ({ from, signal }) => {
-      console.log('Incoming call from:', from.username);
-      console.log('Socket Event: incomingCall');
       setIncomingCall({ from, signal });
       setCallState('incoming');
     });
 
-    // Call accepted by receiver
     socket.on('callAccepted', ({ signal, to }) => {
-      console.log('Call accepted by:', to.username);
-      console.log('Socket Event: callAccepted');
-      // Only update currentCall if it actually changes
-      setCurrentCall(prev => {
-        if (
-          prev &&
-          prev.otherUser &&
-          prev.otherUser._id === to._id &&
-          prev.isCaller === true
-        ) {
-          return prev; // No change, don't update
-        }
-        return { otherUser: to, isCaller: true };
-      });
+      setCurrentCall({ otherUser: to, isCaller: true });
       setCallState('active');
-      // The caller needs to process the signal data from the answer
-      // The WebRTC logic will handle this in the VideoCallRoom component
     });
 
-    // Call rejected by receiver
-    socket.on('callRejected', ({ to }) => {
-      console.log('Call rejected by:', to.username);
-      console.log('Socket Event: callRejected');
+    socket.on('callRejected', () => {
       setOutgoingCall(null);
       setCallState('idle');
-      setCanCall(false); // Start cooldown
+      setCanCall(false);
       callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
-      // Optionally show a notification to the caller
     });
 
-    // Call ended by other user
     socket.on('callEnded', () => {
-      console.log('Call ended by other user');
-      console.log('Socket Event: callEnded');
       setCurrentCall(null);
       setCallState('idle');
-      setCanCall(false); // Start cooldown
+      setCanCall(false);
       callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
-      // Optionally show a notification that the call ended
     });
 
-    // Receive signaling data (ICE candidates, offer/answer)
-    socket.on('returningSignal', ({ signal }) => {
-      // console.log('Receiving signaling data', signal);
-   
-      // This signal needs to be processed by the RTCPeerConnection in the VideoCallRoom component
-      // The WebRTC logic will handle this.
-    });
-
-    // Clean up listeners
     return () => {
       socket.off('incomingCall');
       socket.off('callAccepted');
       socket.off('callRejected');
       socket.off('callEnded');
-      socket.off('returningSignal');
     };
-  }, [user]); // Only depend on user
+  }, [user?._id]);
 
   const emitEvent = (eventName, data) => {
     if (!socketRef.current?.connected || !user?._id) return;
@@ -244,31 +192,24 @@ export const SocketProvider = ({ children }) => {
     socketRef.current.emit(eventName, data);
   };
 
-  // Video call helper functions
   const callUser = (targetUser) => {
     if (!socketRef.current?.connected || !user?._id) {
       setSocketError('Socket not connected.');
       return;
     }
-
     if (callState !== 'idle') {
       setSocketError('A call is already in progress or incoming.');
       return;
     }
-
     if (!canCall) {
       setSocketError('Please wait before trying to call again.');
       return;
     }
-
-    // Clear any existing cooldown timeout before starting a new call
     if (callCooldownTimeoutRef.current) {
       clearTimeout(callCooldownTimeoutRef.current);
       callCooldownTimeoutRef.current = null;
     }
 
-    console.log('Calling user:', targetUser.username);
-    console.log('Socket Emit: callUser', { targetUserId: targetUser._id, from: user });
     setOutgoingCall({ to: targetUser });
     setCallState('calling');
     setCanCall(false); // Temporarily disable calling immediately
@@ -277,20 +218,8 @@ export const SocketProvider = ({ children }) => {
 
   const answerCall = (signal) => {
     if (!socketRef.current?.connected || !user?._id || !incomingCall) return;
-    console.log('Answering call from:', incomingCall.from.username);
-    console.log('Socket Emit: answerCall', { signal, to: incomingCall.from._id, from: user });
     setCallState('active');
-    setCurrentCall(prev => {
-      if (
-        prev &&
-        prev.otherUser &&
-        prev.otherUser._id === incomingCall.from._id &&
-        prev.isCaller === false
-      ) {
-        return prev; // No change, don't update
-      }
-      return { otherUser: incomingCall.from, isCaller: false };
-    });
+    setCurrentCall({ otherUser: incomingCall.from, isCaller: false });
     socketRef.current.emit('answerCall', { signal, to: incomingCall.from._id, from: user });
     setIncomingCall(null); // Clear incoming call state
     setCanCall(true); // Allow new calls after answering (as a new call is now active)
@@ -298,8 +227,6 @@ export const SocketProvider = ({ children }) => {
 
   const rejectCall = () => {
     if (!socketRef.current?.connected || !user?._id || !incomingCall) return;
-    console.log('Rejecting call from:', incomingCall.from.username);
-    console.log('Socket Emit: rejectCall', { to: incomingCall.from._id });
     socketRef.current.emit('rejectCall', { to: incomingCall.from._id });
     setIncomingCall(null);
     setCallState('idle');
@@ -309,11 +236,9 @@ export const SocketProvider = ({ children }) => {
 
   const hangUp = useCallback(() => {
     if (!socketRef.current?.connected || !user?._id || (!currentCall && !outgoingCall)) return;
-    console.log('Hanging up call');
     const targetUserId = currentCall?.otherUser._id || outgoingCall?.to._id;
     if (targetUserId) {
       socketRef.current.emit('hangUp', { to: targetUserId });
-      console.log('Socket Emit: hangUp', { to: targetUserId });
     }
     setCurrentCall(null);
     setOutgoingCall(null);
@@ -321,13 +246,6 @@ export const SocketProvider = ({ children }) => {
     setCanCall(false); // Start cooldown
     callCooldownTimeoutRef.current = setTimeout(() => setCanCall(true), 2000);
   }, [currentCall, outgoingCall, user?._id]);
-
-  const sendSignal = useCallback((targetUserId, signal) => {
-    if (!socketRef.current?.connected || !user?._id) return;
-    console.log('Sending signal to:', targetUserId);
-    // console.log('Socket Emit: sendingSignal', { targetUserId, signal });
-    socketRef.current.emit('sendingSignal', { targetUserId, signal });
-  }, [user?._id]);
 
   const value = {
     socket: socketRef.current,
@@ -343,9 +261,8 @@ export const SocketProvider = ({ children }) => {
     answerCall,
     rejectCall,
     hangUp,
-    sendSignal,
     socketError,
-    canCall // Expose canCall
+    canCall
   };
 
   return (

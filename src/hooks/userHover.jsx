@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from "react";
 
 function useHover() {
   const [isHovering, setIsHovering] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  // position now includes index of hovered item so callers can know which user to show
+  const [position, setPosition] = useState({ top: 0, left: 0, index: null });
   const [activeId, setActiveId] = useState(null);
   const hideTimeoutId = useRef(null); // Ref to track the timeout for hiding
   const showTimeoutId = useRef(null); // Ref to track the timeout for showing
@@ -31,6 +32,7 @@ function useHover() {
       setPosition({
         top: rect.top , // Position below the element
         left: 0, // Align with the element
+         index: id,
       });
       setActiveId(id); // Set the active modal ID
       setIsHovering(true); // Show the modal after delay
@@ -45,10 +47,18 @@ function useHover() {
     hideTimeoutId.current = setTimeout(() => {
       setIsHovering(false); // Hide the modal
       setActiveId(null); // Reset active modal ID
+      setPosition((p) => ({ ...p, index: null }));
     }, 300); // Delay of 300ms before hiding
   }, [clearShowTimeout]);
 
-  return { isHovering, position, activeId, handleMouseEnter, handleMouseLeave, clearHideTimeout };
+  return {
+    isHovering,
+    position,
+    activeId,
+    handleMouseEnter,
+    handleMouseLeave,
+    clearHideTimeout,
+  };
 }
 
 export default useHover;

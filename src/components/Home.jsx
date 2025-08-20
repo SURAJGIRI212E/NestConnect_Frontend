@@ -16,6 +16,7 @@ import LoadingShimmer from './LoadingShimmer';
 import { VideoCallRoom } from './chatComponents/VideoCallRoom';
 
 
+
 // Lazy-loaded components
 const LazyChat = lazy(() => import('./chatComponents/Chat').then(module => ({ default: module.Chat })));
 const LazyIncomingCallDialog = lazy(() => import('./chatComponents/IncomingCallDialog').then(module => ({ default: module.IncomingCallDialog })));
@@ -30,7 +31,7 @@ const Home = () => {
   const { isChatOpen, selectedPeople } = useSelector(state => state.chat);
 
   // Use socket context for video calls
-  const { callState, incomingCall, currentCall, outgoingCall, answerCall, rejectCall, hangUp, sendSignal } = useSocket();
+  const { callState, incomingCall, currentCall, outgoingCall, answerCall, rejectCall, hangUp } = useSocket();
 
   const [showCallRejectedNotification, setShowCallRejectedNotification] = useState(false);
   const prevCallStateRef = useRef(callState); // Ref to track previous callState
@@ -50,15 +51,16 @@ const Home = () => {
     prevCallStateRef.current = callState;
   }, [callState, currentCall, incomingCall]);
 
+
   return (
     <>
-    <div className='flex w-full mx-auto h-screen lg:w-[80%] lg:justify-between' >
+    <div className='flex w-full mx-auto h-screen lg:w-[80%]' >
       {/* Left Sidebar */}
-      <div className="w-min md:w-[6%] lg:w-[20%] ">
+      <div className="w-min md:w-[8%]  lg:w-[20%]  xl:w-[16%] ">
         <LeftSidebar />
       </div>
       {/* Main Feed Area */}
-      <div className={`flex-shrink-1 max-h-min border-r border-l border-[rgb(239, 243, 244)] overflow-y-auto scrollbar ${isChatOpen ? 'hidden sm:block sm:w-full lg:w-[45%]' : 'w-full md:w-[50%] lg:w-[45%]'}`}>
+      <div className={`flex-shrink-1 max-h-min border-r border-l border-[rgb(239, 243, 244)] overflow-y-auto scrollbar ${isChatOpen ? 'hidden sm:block sm:w-full md:w-[45%] lg:w-[50%]' : 'w-full md:w-[45%] lg:w-[50%]'}`}>
         <Routes>
           <Route index element={<Feed/>}/>
           <Route path="profile/:username" element={<Profile/>}/>
@@ -68,15 +70,16 @@ const Home = () => {
           <Route path="bookmarks" element={<Bookmarks/>}/>
           <Route path="blocked-users" element={<BlockedUsers/>}/>
           <Route path="post/:postId" element={ <SinglePostView />} />
-         
+       
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </div>
       {/* Right Sidebar */}
       {isChatOpen ? (
-        <div className="w-full md:w-[50%] lg:w-[30%] overflow-y-auto overflow-x-hidden border-l border-[rgb(239, 243, 244)]">
+        <div className="w-full md:w-[50%]  lg:w-[50%]  xl:w-[35%]  overflow-y-auto overflow-x-hidden border-l border-[rgb(239, 243, 244)]">
           <Suspense fallback={<LoadingShimmer />}>
             <LazyChat selectedPeople={selectedPeople} />
+         
           </Suspense>
         </div>
       ) : (
@@ -93,6 +96,7 @@ const Home = () => {
         <LazyOutgoingCallDialog
           callee={outgoingCall.to}
           onCancelCall={hangUp}
+          durationSec={60}
         />
       </Suspense>
     )}
@@ -105,6 +109,7 @@ const Home = () => {
             caller={incomingCall.from}
             onAccept={() => answerCall(incomingCall.signal)}
             onReject={rejectCall}
+            durationSec={60}
           />
         </Suspense>
       </div>
@@ -113,20 +118,10 @@ const Home = () => {
     {/* Render VideoCallRoom if callState is 'active' */}
     {callState === 'active' && currentCall && (
       <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-        {/* <Suspense fallback={<LoadingShimmer />}>
-          <LazyVideoCallRoom
-            currentCall={currentCall}
-            hangUp={hangUp}
-            sendSignal={sendSignal}
-            // You might need to pass more socket/WebRTC related functions here later
-          />
-        </Suspense> */}
         <VideoCallRoom
-            currentCall={currentCall}
-            hangUp={hangUp}
-            sendSignal={sendSignal}
-            // You might need to pass more socket/WebRTC related functions here later
-          />
+          currentCall={currentCall}
+          hangUp={hangUp}
+        />
       </div>
     )}
 

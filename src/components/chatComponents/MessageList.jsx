@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { IoTrash } from "react-icons/io5";
+import MediaSlider from '../../minicomponents/MediaSlider';
 
 // Helper function to format date
 const formatMessageDate = (dateString) => {
@@ -27,6 +28,16 @@ export const MessageList = ({
   messagesEndRef,
   isTyping,conversationId
 }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessageIndex, setModalMessageIndex] = useState(0);
+  const [modalMediaIndex, setModalMediaIndex] = useState(0);
+
+  const handleImageClick = (msgIdx, mediaIdx) => {
+    setModalMessageIndex(msgIdx);
+    setModalMediaIndex(mediaIdx);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden mt-4 mb-4 scrollbar">
       <div className="flex flex-col pb-8">
@@ -38,7 +49,7 @@ export const MessageList = ({
           return (
             <React.Fragment key={message._id}>
               {showDateSeparator && (
-                <div className="text-center text-gray-800 text-xs my-2 sticky top-0 bg-white/35 backdrop-blur-md z-10">
+                <div className="text-center text-gray-800 text-xs my-2 sticky top-0 bg-zinc-300 backdrop-blur-md z-10">
                   {formatMessageDate(message.createdAt)}
                 </div>
               )}
@@ -52,12 +63,12 @@ export const MessageList = ({
                 <div className={`rounded-lg max-w-64 p-2 relative group ${
                   message.senderId._id === currentUserId 
                     ? 'bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg text-black' 
-                    : 'bg-blue-500 text-white mr-10 backdrop-filter backdrop-blur-lg'
+                    : 'bg-blue-600 text-white mr-10 backdrop-filter backdrop-blur-lg'
                 }`}>
                   {message.senderId._id === currentUserId && hoveredMessage === message._id && (
                     <button
                       onClick={() => onDeleteMessage(message._id)}
-                      className="absolute top-1 -left-4 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute top-1 -left-4 bg-red-600 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                       title="Delete message"
                     >
                       <IoTrash size="10px" />
@@ -67,13 +78,14 @@ export const MessageList = ({
                     <div className="text-xs break-words">{message.content}</div>
                   )}
                   {message.media?.length > 0 && (
-                    <div className="grid grid-cols-2 gap-1 mt-2">
+                    <div className={`grid ${message.media?.length>1?'grid-cols-2':'grid-cols-1'} gap-1 mt-2`}>
                       {message.media.map((media, i) => (
                         <img
                           key={i}
                           src={media.url}
                           alt="message media"
-                          className="w-full h-24 object-cover rounded"
+                          className="w-full h-24 object-contain rounded cursor-pointer"
+                          onClick={() => handleImageClick(index, i)}
                         />
                       ))}
                     </div>
@@ -88,17 +100,32 @@ export const MessageList = ({
         })}
         {!!isTyping[conversationId] && (
         <div className="flex items-center mb-2 ml-2 typing-indicator">
-        <div className="bg-gray-300 rounded-lg px-2 flex items-center">
+        <div className="bg-gray-100/10 rounded-lg px-2 flex items-center">
           <span className="text-2xl leading-none font-bold mr-[-1px]">.</span>
           <span className="text-2xl leading-none font-bold mr-[-1px]">.</span>
           <span className="space-x-0 text-2xl leading-none font-bold  ">.</span>
         </div>
       </div>
         )}
- <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} />
         
       </div>
-     
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="relative">
+            <button
+              className="absolute top-2 right-2 bg-white rounded-full p-2 py-1 z-10"
+              onClick={() => setIsModalOpen(false)}
+            >
+              ✕
+            </button>
+            <MediaSlider
+              media={messages[modalMessageIndex].media}
+              initialIndex={modalMediaIndex}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
