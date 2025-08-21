@@ -129,6 +129,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
+          {/* footer moved to RightSidebar */}
         </div>
       </SocketProvider>
     </Router>
