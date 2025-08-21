@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Nest Connect",
+  "name": "Nest Connect App",
   "icons": [
     {
       "src": "favicon.ico",
@@ -9,7 +9,7 @@
     },
    
     {
-      "src": "x_icon.png",
+      "src": "NestConnectonlyLog.png",
       "type": "image/png",
       "sizes": "512x512"
     }
