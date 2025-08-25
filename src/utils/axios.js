@@ -5,7 +5,7 @@ import { showGlobalToast } from '../components/Toast';
 const instance = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
-  timeout: 30000, // Increase timeout for mobile networks
+  timeout: 60000, // Increase timeout for mobile networks
   headers: {
     'Content-Type': 'application/json',
     // 'ngrok-skip-browser-warning': 'any', // ✅ Add this line
@@ -33,7 +33,7 @@ instance.interceptors.response.use(
     // Use regex to match /reset-password and /reset-password/:token
    const publicPaths = ['/login', '/register', '/reset-password'];
     const isPublicRoute = publicPaths.some(path => window.location.pathname.includes(path));
-
+console.log(error)
     if (
       error.response?.status === 401 &&
       !isPublicRoute &&
