@@ -22,6 +22,7 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("click")
     setLoading(true);
     setError(null);
     setSuccess(null);
