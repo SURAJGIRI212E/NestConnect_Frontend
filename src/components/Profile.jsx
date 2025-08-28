@@ -57,7 +57,7 @@ const Profile = () => {
       setProfileUser(fetchedProfileData.user);
       setMessagePreference(fetchedProfileData.user.messagePreference || 'everyone');
     }
-  }, [username, fetchedProfileData]); 
+  }, [username, fetchedProfileData,handleProfileUpdated‎]); 
 
  
 
