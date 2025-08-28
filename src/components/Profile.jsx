@@ -4,7 +4,12 @@ import { IoIosArrowBack } from "react-icons/io";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axios";
 import LoadingShimmer, { FeedPostShimmer } from './LoadingShimmer';
-import { useGetUserPostsQuery, useGetOwnLikedPostsQuery, useGetUserBookmarksQuery, useGetUserCommentsQuery } from '../hooks/usePostCalls';
+import {
+  useGetUserPostsQuery,
+  useGetOwnLikedPostsQuery,
+  useGetUserBookmarksQuery,
+  useGetUserCommentsQuery
+} from '../hooks/usePostCalls';
 import { EditProfileModal } from "../minicomponents/EditProfileModal";
 import { useUserActions, useGetUserProfileQuery } from "../hooks/useUserActions";
 import { RiMoreLine } from "react-icons/ri";
@@ -13,10 +18,13 @@ import { setIsChatOpen, setSelectedPeople } from "../redux/slices/chatSlice";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import PremiumBadge from '../minicomponents/PremiumBadge';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
   const { username } = useParams();
+  const queryClient = useQueryClient();
+
   const [profileUser, setProfileUser] = useState(null);
   const [messagePreference, setMessagePreference] = useState('everyone');
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -33,19 +41,19 @@ const Profile = () => {
   const { data: fetchedProfileData, isLoading: isLoadingProfile, isError: isErrorProfile, error: profileQueryError } = useGetUserProfileQuery(username);
 
   // Fetch user posts
-  const { data: userPostsData, isLoading: isLoadingUserPosts, isError: isErrorUserPosts, error: userPostsError } = useGetUserPostsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser });
+  const { data: userPostsData, isLoading: isLoadingUserPosts, isError: isErrorUserPosts, error: userPostsError } = useGetUserPostsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id });
   const userPosts = userPostsData?.posts || [];
 
   // Fetch user comments (for replies tab)
-  const { data: userCommentsData, isLoading: isLoadingUserComments, isError: isErrorUserComments, error: userCommentsError } = useGetUserCommentsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser });
+  const { data: userCommentsData, isLoading: isLoadingUserComments, isError: isErrorUserComments, error: userCommentsError } = useGetUserCommentsQuery(profileUser?._id, 1, 10, { enabled: !!profileUser?._id });
   const userComments = userCommentsData?.comments || [];
 
   // Fetch own liked posts (only if it's the current user's profile)
-  const { data: likedPostsData, isLoading: isLoadingLikedPosts, isError: isErrorLikedPosts, error: likedPostsError } = useGetOwnLikedPostsQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser && currentUser?._id === profileUser?._id });
+  const { data: likedPostsData, isLoading: isLoadingLikedPosts, isError: isErrorLikedPosts, error: likedPostsError } = useGetOwnLikedPostsQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!(currentUser?._id && profileUser?._id && currentUser._id === profileUser._id) });
   const likedPosts = likedPostsData?.posts || [];
 
   // Fetch user bookmarks (only if it's the current user's profile)
-  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!profileUser?._id && !profileUser?.isBlockedByCurrentUser && !profileUser?.blockedByOtherUser && currentUser?._id === profileUser?._id });
+  const { data: bookmarksData, isLoading: isLoadingBookmarks, isError: isErrorBookmarks, error: bookmarksError } = useGetUserBookmarksQuery(currentUser?._id === profileUser?._id ? 1 : null, 10, { enabled: !!(currentUser?._id && profileUser?._id && currentUser._id === profileUser._id) });
   const bookmarks = bookmarksData?.posts || [];
 
   useEffect(() => {
@@ -54,12 +62,12 @@ const Profile = () => {
     setMessagePreference('everyone'); //imp line Reset to default
 
     if (fetchedProfileData) {
-      setProfileUser(fetchedProfileData.user);
-      setMessagePreference(fetchedProfileData.user.messagePreference || 'everyone');
+      // fetchedProfileData might be { user: {...} } or a user object depending on API shape
+      const userObj = fetchedProfileData.user ? fetchedProfileData.user : fetchedProfileData;
+      setProfileUser(userObj);
+      setMessagePreference(userObj?.messagePreference || 'everyone');
     }
-  }, [username, fetchedProfileData]); 
-
- 
+  }, [username, fetchedProfileData]);
 
   const handlePreferenceChange = async (e) => {
     const newPreference = e.target.value;
@@ -73,6 +81,18 @@ const Profile = () => {
 
       if (response.data.status === 'success') {
         setUpdateStatus({ type: 'success', message: 'Message preference updated successfully!' });
+
+        // Efficiently update the cached profile for this user (no refetch)
+        if (profileUser?.username) {
+          queryClient.setQueryData(['userProfile', profileUser.username], (old) => {
+            if (!old) {
+              // Store in the common shape: { user: { ... } }
+              return { user: { ...profileUser, messagePreference: newPreference } };
+            }
+            const oldUser = old.user ? old.user : old;
+            return { ...old, user: { ...oldUser, messagePreference: newPreference } };
+          });
+        }
       } else {
         setUpdateStatus({ type: 'error', message: response.data.message || 'Failed to update preference.' });
       }
@@ -84,7 +104,17 @@ const Profile = () => {
   };
 
   const handleProfileUpdated = (updatedUser) => {
+    // Update local state immediately
     setProfileUser(updatedUser);
+
+    // Also update react-query cache for this profile to keep it consistent across navigation
+    if (updatedUser?.username) {
+      queryClient.setQueryData(['userProfile', updatedUser.username], (old) => {
+        if (!old) return { user: updatedUser };
+        const oldUser = old.user ? old.user : old;
+        return { ...old, user: { ...oldUser, ...updatedUser } };
+      });
+    }
   };
 
   const handleFollowToggle = () => {
@@ -124,7 +154,7 @@ const Profile = () => {
   }
 
   if (isErrorProfile) {
-    return <div className="p-4 text-center text-blue-800">Error: {profileQueryError.message}</div>;
+    return <div className="p-4 text-center text-blue-800">Error: {profileQueryError?.message || 'Failed to load profile.'}</div>;
   }
 
   // Display message if the user is blocked
@@ -144,7 +174,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserPosts) {
-          return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError?.message || 'Failed to load posts.'}</div>;
         }
         if (userPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No posts available.</div>;
@@ -155,7 +185,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserComments) {
-          return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError?.message || 'Failed to load comments.'}</div>;
         }
         if (userComments.length === 0) {
           return <div className="p-4 text-center text-gray-500">No comments available.</div>;
@@ -166,7 +196,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorLikedPosts) {
-          return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError?.message || 'Failed to load liked posts.'}</div>;
         }
         if (likedPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No liked posts available.</div>;
@@ -177,7 +207,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorBookmarks) {
-          return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError.message}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError?.message || 'Failed to load bookmarks.'}</div>;
         }
         if (bookmarks.length === 0) {
           return <div className="p-4 text-center text-gray-500">No bookmarks available.</div>;
@@ -194,7 +224,7 @@ const Profile = () => {
         
         <div className="sticky top-0 z-[102] bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg border-b border-white border-opacity-30">
           <button onClick={() => window.history.back()} className="p-4 text-gray-800 hover:text-blue-600 transition duration-200"><IoIosArrowBack size="20px" /></button>
-          <span className="text-xl font-bold text-gray-800">{profileUser?.username}{profileUser?.premium?.isActive && <PremiumBadge />}</span><span className="text-gray-700 text-xs">{userPosts.length} posts</span>
+          <span className="text-xl font-bold text-gray-800">{profileUser?.username}{profileUser?.premium?.isActive && <PremiumBadge />}</span><span className="text-gray-700 text-xs">{userPosts.length}</span>
         </div>
         {/* Cover and Profile Picture */}
         <div className="relative">
@@ -255,7 +285,7 @@ const Profile = () => {
                   : "Follow"}
               </button>
               <button
-                className="ml-2 text-xs px-4 py-2 border border-blue-700 border-opacity-90 bg-white/40  backdrop-blur-3xl shadow-lg text-gray-800 rounded-full font-semibold hover:bg-white transition duration-200 "
+                className="ml-2 text-xs px-4 py-2 border border-blue-700 border-opacity-90 bg-white/40  backdrop-blur-3xl shadow-lg text-gray-800 rounded-full font-semibold hover:bg-white transition duration-200"
                 onClick={handleDirectMessage}
               >
                 Message
@@ -288,7 +318,7 @@ const Profile = () => {
          <div className="flex justify-between">
             <div>
              
-              <h1 className="text-xl font-extrabold text-gray-800">{profileUser?.fullName || profileUser?.username}{profileUser?.premium.isActive && <PremiumBadge/>}</h1>
+              <h1 className="text-xl font-extrabold text-gray-800">{profileUser?.fullName || profileUser?.username}{profileUser?.premium?.isActive && <PremiumBadge/>}</h1>
               <p className="text-gray-700 text-sm">@{profileUser?.username}</p>
             </div>
           </div>
