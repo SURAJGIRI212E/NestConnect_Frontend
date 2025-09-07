@@ -64,15 +64,13 @@ const Profile = () => {
       return;
     }
 
-    // Avoid flicker: only set when data is available; don't clear existing state
+    // Replace seeded minimal user with full fetched profile data
     if (fetchedProfileData?.user) {
-      setProfileUser(prev => {
-        if (prev?._id === fetchedProfileData.user._id) return prev;
-        return fetchedProfileData.user;
-      });
+      setProfileUser(fetchedProfileData.user);
       setMessagePreference(fetchedProfileData.user.messagePreference || 'everyone');
     }
-  }, [username, fetchedProfileData, currentUser]);
+    
+  }, [username, fetchedProfileData, currentUser, profileUser]);
 
   // Fetch user posts
   const {
@@ -189,12 +187,11 @@ const Profile = () => {
     return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   };
 
-  if (isLoadingProfile) {
+  if (isLoadingProfile || !profileUser) {
     return <LoadingShimmer type="profile-page" />;
   }
 
   if (isErrorProfile) {
-    return <div className="p-4 text-center text-blue-800">Error: {profileQueryError?.message || 'Failed to load profile.'}</div>;
     return <div className="p-4 text-center text-blue-800">Error: {profileQueryError?.message || 'Failed to load profile.'}</div>;
   }
 
@@ -216,7 +213,6 @@ const Profile = () => {
         }
         if (isErrorUserPosts) {
           return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError?.message || 'Failed to load posts.'}</div>;
-          return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError?.message || 'Failed to load posts.'}</div>;
         }
         if (userPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No posts available.</div>;
@@ -227,7 +223,6 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserComments) {
-          return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError?.message || 'Failed to load comments.'}</div>;
           return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError?.message || 'Failed to load comments.'}</div>;
         }
         if (userComments.length === 0) {
@@ -240,7 +235,6 @@ const Profile = () => {
         }
         if (isErrorLikedPosts) {
           return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError?.message || 'Failed to load liked posts.'}</div>;
-          return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError?.message || 'Failed to load liked posts.'}</div>;
         }
         if (likedPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No liked posts available.</div>;
@@ -251,7 +245,6 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorBookmarks) {
-          return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError?.message || 'Failed to load bookmarks.'}</div>;
           return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError?.message || 'Failed to load bookmarks.'}</div>;
         }
         if (bookmarks.length === 0) {

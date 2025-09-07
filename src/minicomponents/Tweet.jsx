@@ -140,7 +140,7 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
 
           {/* Parent Post Content */}
           {isComment?null:<Link
-            to={`/home/post/${tweet.parentPost.username}`}
+            to={`/home/post/${tweet.parentPost._id}`}
             className="w-full mb-4 p-3 border border-white border-opacity-30 rounded-xl  bg-opacity-10 hover:bg-opacity-20 transition duration-200 block"
             onClick={(e) => e.stopPropagation()} // Prevent navigation on main tweet when clicking parent post link
           >
@@ -186,7 +186,7 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
 
       {/* Repost Indicator (if the current tweet is a repost) */}
       {tweet?.isRepost && tweet.originalPost && (
-        <div className={`absolute -top-4 left-2 text-blue-600 text-sm font-semibold flex items-center gap-1 ${depth > 0 ? `ml-${depth * 4}` : ''}`}>
+        <div className={`absolute -top-3 left-2 text-blue-600 text-sm font-semibold flex items-center gap-1 ${depth > 0 ? `ml-${depth * 4}` : ''} `}>
           <AiOutlineRetweet size="16px" />
           <span>
           {tweet?.ownerid?.username  !== currentUser?.username && 
@@ -241,7 +241,7 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
                 <RiMoreLine />
               </button>
               {showMenu && (
-                <div className="z-100 absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                <div className="absolute right-0  w-48 bg-blue-100  rounded-md shadow-lg ">
                   {isCurrentUserPost ? (
                     <>
                       <button 

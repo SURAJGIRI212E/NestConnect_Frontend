@@ -45,6 +45,28 @@ export const SocketProvider = ({ children }) => {
 
   // Initialize socket connection (only when user id becomes available)
   useEffect(() => {
+    // Listen for global logout to hard reset socket state
+    const onLogout = () => {
+      try {
+        const socket = socketRef.current;
+        if (socket?.connected) {
+          socket.emit('userOffline', user?._id);
+          socket.disconnect();
+        }
+      } catch {}
+      socketRef.current = null;
+      setIsConnected(false);
+      setOnlineUsers([]);
+      setIncomingCall(null);
+      setOutgoingCall(null);
+      setCurrentCall(null);
+      setCallState('idle');
+    };
+    window.addEventListener('app:logout', onLogout);
+    return () => window.removeEventListener('app:logout', onLogout);
+  }, [user?._id]);
+
+  useEffect(() => {
     if (!user?._id || socketRef.current) return;
 
     socketRef.current = io(process.env.REACT_APP_SOCKET_URL, {

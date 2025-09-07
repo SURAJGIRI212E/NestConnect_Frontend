@@ -2,7 +2,10 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../utils/axios';
 import { useDispatch } from 'react-redux';
 import { setAuthUser } from '../redux/slices/authSlice';
-import axios from 'axios';
+import { setConversations, clearSelectedPeople, setIsChatOpen, updateOnlineUsers } from '../redux/slices/chatSlice';
+import { setPosts } from '../redux/slices/postSlice';
+
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthContext = createContext();
 
@@ -11,6 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false); // Track if auth check is done
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Only check auth status once on mount
@@ -50,11 +54,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.status === 'success') {      
-        // The /api/auth/login currently returns { userid, username }. 
-        // To get the full user object (including following/blockedUsers) for Redux,
-        // we should ideally fetch it or have the login endpoint return it.
-        // For now, let's rely on checkAuthStatus immediately after login.
-        // If checkAuthStatus is called right after, it will populate the Redux store correctly.
+        
         setUser({ _id: response.data.userid, username: response.data.username }); // Set minimal user info in context
         localStorage.setItem('userId', response.data.userid);
         // await checkAuthStatus(); // Call checkAuthStatus to immediately update Redux with full user data
@@ -86,6 +86,16 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       dispatch(setAuthUser(null)); // Clear user data in Redux
       localStorage.removeItem('userId');
+      // Clear Redux slices
+      dispatch(setConversations([]));
+      dispatch(clearSelectedPeople());
+      dispatch(setIsChatOpen(false));
+      dispatch(updateOnlineUsers([]));
+      dispatch(setPosts([]));
+      // Clear React Query cache
+      try { queryClient.clear(); } catch {}
+      // Notify other providers (e.g., sockets) to cleanup
+      try { window.dispatchEvent(new Event('app:logout')); } catch {}
     }
   };
 
