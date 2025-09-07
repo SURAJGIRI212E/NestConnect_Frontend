@@ -167,8 +167,4 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
       </div>
     </div>
   );
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 1cb583ddb55ef10ac5f08aa2f84c6c976dcddbf4
