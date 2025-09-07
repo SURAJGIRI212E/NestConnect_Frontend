@@ -33,7 +33,7 @@ instance.interceptors.response.use(
     // Use regex to match /reset-password and /reset-password/:token
    const publicPaths = ['/login', '/register', '/reset-password'];
     const isPublicRoute = publicPaths.some(path => window.location.pathname.includes(path));
-
+console.log(error)
     if (
       error.response?.status === 401 &&
       !isPublicRoute &&

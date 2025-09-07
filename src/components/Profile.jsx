@@ -10,6 +10,7 @@ import {
   useGetUserBookmarksQuery,
   useGetUserCommentsQuery
 } from '../hooks/usePostCalls';
+
 import { EditProfileModal } from "../minicomponents/EditProfileModal";
 import { useUserActions, useGetUserProfileQuery } from "../hooks/useUserActions";
 import { RiMoreLine } from "react-icons/ri";
@@ -18,9 +19,11 @@ import { setIsChatOpen, setSelectedPeople } from "../redux/slices/chatSlice";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import PremiumBadge from '../minicomponents/PremiumBadge';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { username } = useParams();
   const [profileUser, setProfileUser] = useState(() => {
     // Pre-seed when visiting own profile to avoid initial null
@@ -127,6 +130,18 @@ const Profile = () => {
 
       if (response.data.status === 'success') {
         setUpdateStatus({ type: 'success', message: 'Message preference updated successfully!' });
+
+        // Efficiently update the cached profile for this user (no refetch)
+        if (profileUser?.username) {
+          queryClient.setQueryData(['userProfile', profileUser.username], (old) => {
+            if (!old) {
+              // Store in the common shape: { user: { ... } }
+              return { user: { ...profileUser, messagePreference: newPreference } };
+            }
+            const oldUser = old.user ? old.user : old;
+            return { ...old, user: { ...oldUser, messagePreference: newPreference } };
+          });
+        }
       } else {
         setUpdateStatus({ type: 'error', message: response.data.message || 'Failed to update preference.' });
       }
@@ -180,6 +195,7 @@ const Profile = () => {
 
   if (isErrorProfile) {
     return <div className="p-4 text-center text-blue-800">Error: {profileQueryError?.message || 'Failed to load profile.'}</div>;
+    return <div className="p-4 text-center text-blue-800">Error: {profileQueryError?.message || 'Failed to load profile.'}</div>;
   }
 
   // Display message if the user is blocked
@@ -200,6 +216,7 @@ const Profile = () => {
         }
         if (isErrorUserPosts) {
           return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError?.message || 'Failed to load posts.'}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading posts: {userPostsError?.message || 'Failed to load posts.'}</div>;
         }
         if (userPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No posts available.</div>;
@@ -210,6 +227,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorUserComments) {
+          return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError?.message || 'Failed to load comments.'}</div>;
           return <div className="p-4 text-center text-blue-800">Error loading comments: {userCommentsError?.message || 'Failed to load comments.'}</div>;
         }
         if (userComments.length === 0) {
@@ -222,6 +240,7 @@ const Profile = () => {
         }
         if (isErrorLikedPosts) {
           return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError?.message || 'Failed to load liked posts.'}</div>;
+          return <div className="p-4 text-center text-blue-800">Error loading liked posts: {likedPostsError?.message || 'Failed to load liked posts.'}</div>;
         }
         if (likedPosts.length === 0) {
           return <div className="p-4 text-center text-gray-500">No liked posts available.</div>;
@@ -232,6 +251,7 @@ const Profile = () => {
           return ([...Array(3)].map((_, index) => <FeedPostShimmer key={index} />));
         }
         if (isErrorBookmarks) {
+          return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError?.message || 'Failed to load bookmarks.'}</div>;
           return <div className="p-4 text-center text-blue-800">Error loading bookmarks: {bookmarksError?.message || 'Failed to load bookmarks.'}</div>;
         }
         if (bookmarks.length === 0) {
