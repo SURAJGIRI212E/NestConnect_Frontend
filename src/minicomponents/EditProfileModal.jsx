@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { IoClose } from "react-icons/io5";
 import axiosInstance from "../utils/axios";
-// import { useAuth } from "../context/AuthContext";
+import { useQueryClient } from '@tanstack/react-query';
 
 export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated }) => {
-  // const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
+
   const [fullName, setFullName] = useState(currentProfileUser?.fullName || "");
   const [bio, setBio] = useState(currentProfileUser?.bio || "");
   const [avatar, setAvatar] = useState(null);
@@ -47,7 +48,6 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
       return;
     }
 
-
     try {
       const response = await axiosInstance.patch("/api/users/updateuser", formData, {
         headers: {
@@ -57,7 +57,29 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
 
       if (response.data.status === "success") {
         setSuccess("Profile updated successfully!");
-        onProfileUpdated(response.data.data); // Pass updated user data to parent
+
+        // Determine the updated user object (handle both shapes)
+        const updatedData = response.data.data;
+        const updatedUser = updatedData?.user ? updatedData.user : updatedData;
+
+        // Update react-query cache for this user's profile directly (efficient — no refetch)
+        if (updatedUser && updatedUser.username) {
+          // The app's userProfile query uses ['userProfile', username] as key
+          queryClient.setQueryData(['userProfile', updatedUser.username], (old) => {
+            // Keep structure compatible with getUserProfileQuery (which returns { user: ... } or similar)
+            if (!old) return { user: updatedUser };
+            // If old has { user: ... } pattern:
+            if (old.user) {
+              return { ...old, user: { ...old.user, ...updatedUser } };
+            }
+            // Fallback: store as { user: updatedUser }
+            return { ...old, user: updatedUser };
+          });
+        }
+
+        // Notify parent component via callback with the updated user
+        onProfileUpdated(updatedUser);
+
         setTimeout(() => {
           onClose();
         }, 1500);
@@ -131,8 +153,8 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
             )}
           </div>
 
-          {/* {error && <p className="text-red-600 text-sm">{error}</p>} */}
           {success && <p className="text-green-700 text-sm">{success}</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
             type="submit"
@@ -145,4 +167,4 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
       </div>
     </div>
   );
-}; 
+};

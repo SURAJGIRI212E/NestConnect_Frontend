@@ -5,7 +5,7 @@ import { showGlobalToast } from '../components/Toast';
 const instance = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
-  timeout: 30000, // Increase timeout for mobile networks
+  timeout: 60000, // Increase timeout for mobile networks
   headers: {
     'Content-Type': 'application/json',
     // 'ngrok-skip-browser-warning': 'any', // ✅ Add this line
