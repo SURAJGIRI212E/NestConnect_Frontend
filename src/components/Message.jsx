@@ -17,7 +17,7 @@ export const Message = () => {
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [warning, setWarning] = useState(''); // Add this state
   const conversations = useSelector(state => state.chat.conversations);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  
   // conversationsError is only displayed (never set here), use a simple variable to avoid unused setter
   const conversationsError = null;
 
@@ -62,10 +62,7 @@ export const Message = () => {
     };
   }, [socket, dispatch]);
 
-  useEffect(() => {
-    // Just handle loading state based on conversations
-    setIsLoadingConversations(conversations.length === 0);
-  }, [conversations]);
+  
 
   const handlePersonSelect = (person) => {
     if (!selectedPeopleState.find(p => p._id === person._id)) {
@@ -166,12 +163,11 @@ export const Message = () => {
       </div>
 
       <div className="flex-1 p-4">
-        {isLoadingConversations && <div className="text-center text-gray-700">Loading conversations...</div>}
         {conversationsError && <div className="text-center text-blue-800">{conversationsError}</div>}
-        {!isLoadingConversations && conversations.length === 0 && !conversationsError && (
+        {conversations.length === 0 && !conversationsError && (
           <p className="text-center text-gray-700">No conversations yet. Start a new message!</p>
         )}
-        {!isLoadingConversations && conversations.length > 0 && (
+        {conversations.length > 0 && (
           <div className="space-y-4">
             {conversations.map(conversation => (
               <div 
