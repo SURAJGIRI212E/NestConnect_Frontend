@@ -106,9 +106,9 @@ export const CreatePost = ({ parentPost }) => {
       {/* Content */}
       <div>
         <div className="flex p-2">
-          <div className="w-[32px] overflow-clip items-start mt-1">
+          <div className="w-6 h-6 overflow-hidden rounded-full flex-shrink-0 mt-1">
             <img
-              className="rounded-full w-10 object-cover"
+              className="w-full h-full object-cover"
               src={currentUser?.avatar || avator}
               alt="profile"
             />

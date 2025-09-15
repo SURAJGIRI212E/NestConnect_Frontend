@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { IoClose } from "react-icons/io5";
 import axiosInstance from "../utils/axios";
 import { useQueryClient } from '@tanstack/react-query';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/getCroppedImg';
 
 export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated }) => {
   const queryClient = useQueryClient();
@@ -9,7 +11,14 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
   const [fullName, setFullName] = useState(currentProfileUser?.fullName || "");
   const [bio, setBio] = useState(currentProfileUser?.bio || "");
   const [avatar, setAvatar] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(currentProfileUser?.avatar || null);
   const [coverImage, setCoverImage] = useState(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -18,8 +27,40 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
     if (currentProfileUser) {
       setFullName(currentProfileUser.fullName || "");
       setBio(currentProfileUser.bio || "");
+      setAvatarPreview(currentProfileUser.avatar || null);
     }
   }, [currentProfileUser]);
+
+  // When user selects a new avatar file, open crop UI (react-easy-crop)
+  const handleAvatarSelect = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCropSrc(e.target.result);
+      setCropOpen(true);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const doCrop = useCallback(async () => {
+    if (!cropSrc || !croppedAreaPixels) return;
+    try {
+      const { blob, url } = await getCroppedImg(cropSrc, croppedAreaPixels, rotation, 400);
+      const file = new File([blob], 'avatar.png', { type: blob.type });
+      setAvatar(file);
+      setAvatarPreview(url);
+      setCropOpen(false);
+    } catch (err) {
+      console.error('Crop failed', err);
+    }
+  }, [cropSrc, croppedAreaPixels, rotation]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,11 +173,46 @@ export const EditProfileModal = ({ onClose, currentProfileUser, onProfileUpdated
               type="file"
               id="avatar"
               accept="image/*"
-              onChange={(e) => setAvatar(e.target.files[0])}
+              onChange={(e) => handleAvatarSelect(e.target.files[0])}
               className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
-             {currentProfileUser?.avatar && (
-              <img src={currentProfileUser.avatar} alt="Current Avatar" className="mt-2 w-20 h-20 rounded-full object-cover" />
+             {(avatarPreview || currentProfileUser?.avatar) && (
+              <img src={avatarPreview || currentProfileUser.avatar} alt="Current Avatar" className="mt-2 w-20 h-20 rounded-full object-cover" />
+            )}
+            {/* Crop UI */}
+            {cropOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="bg-white rounded-lg p-4 w-[420px]">
+                  <div className="mb-2 text-sm font-medium text-gray-700">Adjust and crop</div>
+                  <div className="relative w-full h-80 bg-gray-100">
+                    {cropSrc && (
+                      <Cropper
+                        image={cropSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        rotation={rotation}
+                        aspect={1}
+                        onCropChange={setCrop}
+                        onZoomChange={setZoom}
+                        onRotationChange={setRotation}
+                        onCropComplete={onCropComplete}
+                      />
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <label className="text-xs">Zoom</label>
+                    <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full" />
+                  </div>
+                  <div className="mt-2">
+                    <label className="text-xs">Rotate</label>
+                    <input type="range" min="0" max="360" step="1" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full" />
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-200" onClick={() => { setCropOpen(false); setCropSrc(null); }}>Cancel</button>
+                    <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white" onClick={doCrop}>Use Photo</button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           <div>

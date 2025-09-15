@@ -12,8 +12,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect, memo } from 'react';
 import { EditPostModal } from './EditPostModal';
 import { formatTimeAgo } from '../utils/timeAgo';
-import PremiumBadge from "./PremiumBadge";
 import MediaSlider from "./MediaSlider";
+import AvatarWithMeta from './AvatarWithMeta';
 
 export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwnerId }) => {
   const { likeUnlikePostMutation, repostMutation, deletePostMutation } = usePostCalls();
@@ -131,9 +131,9 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
     >
       {/* Comment Indicator and Parent Post Display (Always at the top if present) */}
       {tweet?.parentPost && tweet.parentPost.ownerid && (
-        <div className="w-full flex flex-col items-start mb-1">
+        <div className="w-full flex flex-col items-start">
           {/* "Replying to" indicator */}
-          <div className="text-gray-700 text-xs font-semibold flex items-center gap-1 mb-2">
+          <div className="text-gray-700 text-xs font-semibold flex items-center gap-1">
             <FaRegComment size="14px" />
             <span>Replying to @{tweet.parentPost.ownerid?.username || "unknown"}</span>
           </div>
@@ -141,30 +141,31 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
           {/* Parent Post Content */}
           {isComment?null:<Link
             to={`/home/post/${tweet.parentPost._id}`}
-            className="w-full mb-4 p-3 border border-white border-opacity-30 rounded-xl  bg-opacity-10 hover:bg-opacity-20 transition duration-200 block"
+            className="w-full  p-2 border  border-white border-opacity-30 rounded-xl  bg-opacity-10 hover:bg-opacity-20 transition duration-200 block"
             onClick={(e) => e.stopPropagation()} // Prevent navigation on main tweet when clicking parent post link
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center justify-center">
-                <img className="rounded-full w-8 h-8 object-cover" src={(() => {
-                  const avatarUrl = tweet.parentPost.ownerid?.avatar;
-                  if (avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
-                    return avatarUrl;
-                  } else {
+            <div className="flex items-start ">
+              <div className="">
+                <AvatarWithMeta
+                  avatar={( () => {
+                    const avatarUrl = tweet.parentPost.ownerid?.avatar;
+                    if (avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
+                      return avatarUrl;
+                    }
                     return useravator;
-                  }
-                })()} alt="profile" />
-                <h1 className="text-xs font-bold text-gray-800">
-                  {tweet.parentPost.ownerid?.fullName || "Unknown User"}
-                  {( (tweet?.parentPost.ownerid?.premium?.isActive)) && <PremiumBadge />}
-                </h1>
-                <p className="text-gray-700 text-xs">@{tweet.parentPost.ownerid?.username || "unknown"}.</p>
-                <span className="text-gray-700 text-xs">
-                  {tweet.parentPost.createdAt ? formatTimeAgo(tweet.parentPost.createdAt) : "N/A"}
-                </span>
+                  })()}
+                  name={tweet.parentPost.ownerid?.fullName}
+                  username={tweet.parentPost.ownerid?.username}
+                  time={tweet.parentPost.createdAt ? formatTimeAgo(tweet.parentPost.createdAt) : null}
+                  to={`/home/profile/${tweet.parentPost.ownerid?.username}`}
+                  size="sm"
+                  showMeta={true}
+                  showPremium={tweet?.parentPost?.ownerid?.premium?.isActive}
+                />
               </div>
+      
             </div>
-            <p className="text-left text-sm text-gray-700 break-words mt-1">
+            <p className="text-left text-sm text-gray-800 break-words mt-1">
               {tweet.parentPost.content}
             </p>
             {tweet.parentPost.media && tweet.parentPost.media.length > 0 && (
@@ -172,9 +173,9 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
                 {tweet.parentPost.media.map((mediaItem, index) => (
                   <div key={index} className="w-full h-auto max-h-48 rounded-lg overflow-hidden">
                     {mediaItem.type.startsWith('image') ? (
-                      <img src={mediaItem.url} alt="parent post media" className="w-full h-full object-cover" />
+                      <img src={mediaItem.url} alt="parent post media" className="w-full h-full object-contain" />
                     ) : (
-                      <video src={mediaItem.url} controls className="w-full h-full object-cover" />
+                      <video src={mediaItem.url} controls className="w-full h-full object-contain" />
                     )}
                   </div>
                 ))}
@@ -186,7 +187,7 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
 
       {/* Repost Indicator (if the current tweet is a repost) */}
       {tweet?.isRepost && tweet.originalPost && (
-        <div className={`absolute -top-3 left-2 text-blue-600 text-sm font-semibold flex items-center gap-1 ${depth > 0 ? `ml-${depth * 4}` : ''} `}>
+        <div className={`absolute -top-4 left-2 text-blue-600 text-xs font-semibold flex items-center gap-1 ${depth > 0 ? `ml-${depth * 4}` : ''} `}>
           <AiOutlineRetweet size="16px" />
           <span>
           {tweet?.ownerid?.username  !== currentUser?.username && 
@@ -198,39 +199,26 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
 
       {/* Main Content of the Current Tweet (conditionally indented if it's a comment) */}
       <div className={`flex gap-1 w-full ${tweet?.parentPost && !isComment ? 'ml-2 border-l-2 border-black pt-5' : ''}`}>
-        {/* Avatar Section */}
-        <div className="w-[30px]  items-start mt-1">
-          <Link to={`/home/profile/${postAuthor?.username}`} onClick={(e) => e.stopPropagation()}>
-          <img className="rounded-full w-14  object-cover" 
-            src={(() => {
-              const avatarUrl = tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.avatar : tweet?.ownerid?.avatar;
-              if (avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
-                
-                return avatarUrl;
-              } else {
-                return useravator;
-              }
-            })()} 
-            alt="profile"
-          />
-          </Link>
-        </div>
 
         <div className="w-full">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center justify-center gap-1">
-              <Link to={`/home/profile/${postAuthor?.username}`} className="flex items-center" onClick={(e) => e.stopPropagation()}>
-              <h1 className="text-xs font-bold text-gray-800">
-                {tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.fullName || "Unknown User" : tweet?.ownerid?.fullName || "Unknown User"}
-                {(tweet?.isRepost
-                  ? tweet.originalPost?.ownerid?.premium?.isActive
-                  : tweet?.ownerid?.premium?.isActive) && <PremiumBadge />}
-              </h1>
-              <p className="text-gray-700 text-xs">@{tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.username || "unknown" : tweet?.ownerid?.username || "unknown"}.</p>
-              </Link>
-              <span className="text-gray-700 text-xs">
-                {tweet?.createdAt ? formatTimeAgo(tweet.createdAt) : "N/A"}
-              </span>
+              <AvatarWithMeta
+                avatar={( () => {
+                  const avatarUrl = tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.avatar : tweet?.ownerid?.avatar;
+                  if (avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
+                    return avatarUrl;
+                  }
+                  return useravator;
+                })()}
+                name={tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.fullName : tweet?.ownerid?.fullName}
+                username={tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.ownerid?.username : tweet?.ownerid?.username}
+                time={tweet?.createdAt ? formatTimeAgo(tweet.createdAt) : null}
+                to={`/home/profile/${postAuthor?.username}`}
+                size="md"
+                showMeta={true}
+                showPremium={tweet?.isRepost ? tweet.originalPost?.ownerid?.premium?.isActive : tweet?.ownerid?.premium?.isActive}
+              />
             </div>
 
             <div className="relative" ref={menuRef}>
@@ -279,8 +267,8 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
           </div>
 
           {/* Main Tweet Section */}
-          <div className="mt-[-5px] ">
-            <p className="text-left text-sm text-gray-700 break-words">
+          <div className="mt-2 ml-1">
+            <p className="text-left text-sm text-gray-800 break-words">
               {tweet?.isRepost && tweet.originalPost ? tweet.originalPost?.content : tweet?.content}
             </p>
             {tweet?.media && tweet.media.length > 0 && (
@@ -290,9 +278,9 @@ export const Tweet = memo(({ isComment, tweet, isBookmarked, depth = 0, postOwne
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="w-full h-auto max-h-96 rounded-lg overflow-hidden">
                     {tweet.media[0].type.startsWith('image') ? (
-                      <img src={tweet.media[0].url} alt="post media" className="w-full h-full object-full" />
+                      <img src={tweet.media[0].url} alt="post media" className="w-full h-full object-contain" />
                     ) : (
-                      <video src={tweet.media[0].url} controls className="w-full h-full object-full" />
+                      <video src={tweet.media[0].url} controls className="w-full h-full object-contian" />
                     )}
                   </div>
                 </div>

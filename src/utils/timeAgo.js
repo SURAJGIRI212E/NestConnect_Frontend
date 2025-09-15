@@ -9,30 +9,25 @@ export const formatTimeAgo = (dateString) => {
 
   const seconds = Math.floor((now - date) / 1000);
 
-  let interval = seconds / 31536000;
-  if (interval > 1) {
-    return Math.floor(interval) + " years ago";
+  // Less than 1 minute
+  if (seconds < 60) return `${seconds}s`;
+
+  // Less than 1 hour
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+
+  // Less than 24 hours -> show relative hours
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+
+  // 24 hours or more -> show exact date (month day), include year if > 1 year
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  const oneYearInSeconds = 31536000;
+  if (seconds >= oneYearInSeconds) {
+    return `${month} ${day} ${year}`;
   }
-  interval = seconds / 2592000;
-  if (interval > 1) {
-    return Math.floor(interval) + " months ago";
-  }
-  interval = seconds / 604800; // Seconds in a week
-  if (interval > 1) {
-    return Math.floor(interval) + " weeks ago";
-  }
-  interval = seconds / 86400;
-  if (interval > 1) {
-    return Math.floor(interval) + " days ago";
-  }
- 
-  interval = seconds / 3600;
-  if (interval > 1) {
-    return Math.floor(interval) + " hours ago";
-  }
-  interval = seconds / 60;
-  if (interval > 1) {
-    return Math.floor(interval) + " min ago";
-  }
-  return Math.floor(seconds) + " sec ago";
-}; 
+
+  return `${month} ${day}`;
+};

@@ -30,20 +30,50 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Use regex to match /reset-password and /reset-password/:token
-   const publicPaths = ['/login', '/register', '/reset-password'];
+    // Use regex to match public routes 
+    const publicPaths = ['/login', '/register', '/reset-password'];
     const isPublicRoute = publicPaths.some(path => window.location.pathname.includes(path));
-console.log(error)
-    if (
-      error.response?.status === 401 &&
-      !isPublicRoute &&
-      showGlobalToast
-    ) {
-      showGlobalToast(error.response.data.message || 'Please login to access this resource.', 'error');
-    } else if (!isPublicRoute && error.response?.data?.message && showGlobalToast) {
-      showGlobalToast(error.response.data.message, 'error');
-    } else if (!isPublicRoute && showGlobalToast) {
-      showGlobalToast(error.message || 'An unexpected error occurred.', 'error');
+
+    // Helper to extract a friendly message from many possible error shapes
+    const extractErrorMessage = (err) => {
+      if (!err) return 'An unexpected error occurred.';
+      // Prefer response data obj shapes
+      const resp = err.response?.data;
+      if (resp) {
+        // Common app error: { message }
+        if (typeof resp.message === 'string' && resp.message.length) return resp.message;
+        // Razorpay test/production obj: { error: { description } } or { error: { reason/message } }
+        if (resp.error) {
+          if (typeof resp.error === 'string' && resp.error.length) return resp.error;
+          if (typeof resp.error.description === 'string' && resp.error.description.length) return resp.error.description;
+          if (typeof resp.error.reason === 'string' && resp.error.reason.length) return resp.error.reason;
+          if (typeof resp.error.message === 'string' && resp.error.message.length) return resp.error.message;
+        }
+        // other: { error_description }
+        if (typeof resp.error_description === 'string' && resp.error_description.length) return resp.error_description;
+        if (typeof resp.description === 'string' && resp.description.length) return resp.description;
+        //  attempt to stringify the response
+        try {
+          const s = JSON.stringify(resp);
+          if (s && s !== '{}' ) return s;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Fallback to axios error message
+      if (err.message) return err.message;
+      return 'An unexpected error occurred.';
+    };
+
+    const message = extractErrorMessage(error);
+
+    if (!isPublicRoute && typeof showGlobalToast === 'function') {
+      if (error.response?.status === 401) {
+        showGlobalToast(message || 'Please login to access this resource.', 'error');
+      } else {
+        showGlobalToast(message, 'error');
+      }
     }
 
     return Promise.reject(error);

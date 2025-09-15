@@ -4,28 +4,24 @@ import { IoMdClose } from "react-icons/io";
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../utils/axios';
 import { useSubscriptionPlans, useSubscriptionStatus } from '../hooks/useSubscription';
-import PremiumBadge from '../minicomponents/PremiumBadge';
+import { useQueryClient } from '@tanstack/react-query';
+import   { LargePremiumBadge } from '../minicomponents/PremiumBadge';
 import LoadingShimmer from './LoadingShimmer';
-
-
 
 export const Premium = () => {
     const [selectedPlan, setSelectedPlan] = useState('ANNUAL');
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { data: plans, isLoading: plansLoading } = useSubscriptionPlans();
-    const { data: status, isLoading: statusLoading } = useSubscriptionStatus();
-console.log(status)
-console.log(plans)
-
+  const { data: plans, isLoading: plansLoading } = useSubscriptionPlans();
+  const { data: status, isLoading: statusLoading } = useSubscriptionStatus();
+  const queryClient = useQueryClient();
+  
     const handlePlanChange = (plan) => {
       setSelectedPlan(plan);
     };
 
     const handlePayment = async () => {
       // 1. Call backend to create subscription
-      console.log("selectedPlan",selectedPlan)
-  
       const { data } = await axiosInstance.post('/api/subscription/create', {
         planId: selectedPlan === 'MONTHLY'
           ? process.env.REACT_APP_RAZORPAY_MONTHLY_PLAN_ID
@@ -40,23 +36,34 @@ console.log(plans)
         description: 'Premium Subscription',
         handler: function (response) {
         // 3. Notify backend to activate premium
-        // You can send response.razorpay_payment_id, response.razorpay_subscription_id, etc.
+        
         },
         prefill: {
           email: user.email,
           name: user.fullName,
         },
-        theme: { color: '#3399cc' }
+        theme: { color: '#357df0' }
       };
       const rzp = new window.Razorpay(options);
       rzp.open();
     };
 
+    const handleCancel = async () => {
+      if (window.confirm("Are you sure you want to cancel the subscription?")){
+      try {
+        await axiosInstance.post('/api/subscription/cancel');
+        queryClient.invalidateQueries(['subscriptionStatus']);
+
+      } catch (err) {
+        console.error('Cancel subscription failed');
+      }
+    }};
+
   // Use new backend subscription status fields
   if (statusLoading) return <LoadingShimmer/>;
   if (status?.isActive) {
     return (
-      <section className="max-w-3xl mx-auto px-4 py-10 md:px-8 h-screen relative flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 rounded-2xl shadow-2xl border border-blue-300">
+      <section className="max-w-3xl mx-auto px-4 py-10 md:px-8  relative flex flex-col items-center justify-center bg-gradient-to-br from-blue-300 via-white to-blue-400 rounded-2xl shadow-2xl border border-blue-300">
         <button 
           onClick={() => navigate(-1)} 
           className="absolute top-8 left-8 p-2 rounded-full bg-white bg-opacity-70 hover:bg-blue-200 transition-colors text-blue-700 shadow-md"
@@ -64,8 +71,8 @@ console.log(plans)
           <IoMdClose size={28} />
         </button>
         <div className="flex flex-col items-center justify-center mt-8 mb-6">
-          <div className="bg-gradient-to-tr from-blue-400 via-blue-600 to-blue-400 p-4 rounded-full shadow-lg mb-4 animate-bounce">
-            <PremiumBadge/>
+          <div className="bg-gradient-to-tr from-blue-400 via-blue-100 to-blue-400 px-5 py-4 rounded-full shadow-lg mb-4 animate-bounce">
+            <LargePremiumBadge/>
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold mb-2 text-center text-blue-700 drop-shadow-lg">Premium Unlocked!</h1>
           <p className="text-center text-blue-600 mb-4 text-lg md:text-2xl font-semibold">Thank you for supporting us. Enjoy your exclusive features.</p>
@@ -85,7 +92,8 @@ console.log(plans)
           </div>
         </div>
         <div className="flex flex-col items-center mt-4">
-          <span className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-semibold shadow-lg text-lg animate-pulse">Premium Active</span>
+          <span className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-semibold shadow-lg text-lg animate-pulse">Premium Activated</span>
+          {status?.plan ==='Monthly' && <button onClick={handleCancel} className="mt-4 text-xs text-gray-500 hover:underline transition">Cancel Subscription</button>}
         </div>
       </section>
     );

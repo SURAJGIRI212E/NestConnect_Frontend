@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from '../utils/axios';
+import axiosInstance from '../utils/axios';
 
 export const useSubscriptionPlans = () =>
   useQuery({
     queryKey: ['subscriptionPlans'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/subscription/plans');
+      const { data } = await axiosInstance.get('/api/subscription/plans');
       return data;
     }
   });
@@ -14,7 +14,7 @@ export const useSubscriptionStatus = () =>
   useQuery({
     queryKey: ['subscriptionStatus'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/subscription/status');
+      const { data } = await axiosInstance.get('/api/subscription/status');
       return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
