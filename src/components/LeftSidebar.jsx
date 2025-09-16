@@ -63,11 +63,11 @@ export const LeftSidebar = () => {
         <div  className='mt-4 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl shadow-lg border border-white border-opacity-30 overflow-auto '>
 
         <div>
-          <img className='w-10' src={logo} alt="logo" />
+          <img className='w-14' src={logo} alt="logo" />
         </div> 
           {navItems.map((item, index) => (
             <Link to={item.path} key={index}
-              className={`flex items-center gap-x-3 my-3 px-4 py-2 w-min transition-all duration-300 hover:bg-white hover:bg-opacity-80 hover:shadow-2xl rounded-full cursor-pointer relative ${location.pathname === item.path ? 'bg-white bg-opacity-80 shadow-2xl' : ''}`}
+              className={`flex items-center gap-x-3 my-2 px-4 py-2 w-min transition-all duration-300 hover:bg-white hover:bg-opacity-80 hover:shadow-2xl rounded-full cursor-pointer relative ${location.pathname === item.path ? 'bg-white bg-opacity-80 shadow-2xl' : ''}`}
             >
               <div>{item.icon}</div>
               <h1 className="hidden lg:block font-semibold text-gray-800">{item.label}</h1>

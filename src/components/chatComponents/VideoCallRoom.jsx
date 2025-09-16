@@ -582,13 +582,8 @@ export const VideoCallRoom = ({ currentCall, hangUp }) => {
         // 3) Get ICE servers (Twilio Network Traversal)
         const res = await fetch(`${process.env.REACT_APP_API_URL}/api/webrtc/ice-servers`, {
           credentials: 'include',
-        
+          // headers: { 'ngrok-skip-browser-warning': 'any' }//ngrok ✅
         });
-
-        // const res = await fetch(`${process.env.REACT_APP_API_URL}/api/webrtc/ice-servers`, {
-        //   credentials: 'include',
-        //   headers: { 'ngrok-skip-browser-warning': 'any' }
-        // });
 
         if (!res.ok) throw new Error('ICE fetch failed');
         const { iceServers } = await res.json();

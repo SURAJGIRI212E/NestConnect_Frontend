@@ -50,8 +50,8 @@ export const Feed = () => {
     <div className=''>
       
       <div className='flex-1 '>
-      <div className="sticky top-0 z-10 flex justify-around items-center border-b border-[rgb(239, 243, 244)] bg-inherit backdrop-blur-3xl shadow-lg">
-        <div className="w-[50%] py-3 hover:bg-white/50">
+      <div className="sticky top-0 z-10 flex justify-around items-center border-b border-[rgb(239, 243, 244)] bg-blue-200/70 backdrop-blur-sm shadow-lg">
+        <div className="w-[50%] py-3 hover:bg-white/50 ">
           <h1 className="text-xs cursor-pointer text-center">For you</h1>
         </div>
        

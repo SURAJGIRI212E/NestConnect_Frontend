@@ -37,8 +37,8 @@ const Home = () => {
   const prevCallStateRef = useRef(callState); // Ref to track previous callState
 
   useEffect(() => {
-    // This effect triggers when callState changes.
-    // We check if we were 'calling' and now we are 'idle' without an active call,
+
+    //  checking if we were 'calling' and now we are 'idle' without an active call,
     // which implies the outgoing call was rejected or cancelled by the other party.
     if (prevCallStateRef.current === 'calling' && callState === 'idle' && !currentCall && !incomingCall) {
       setShowCallRejectedNotification(true);
