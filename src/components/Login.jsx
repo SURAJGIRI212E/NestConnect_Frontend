@@ -81,7 +81,7 @@ export const Login = () => {
         <div className="flex justify-center mb-6">
           <img src={logo} alt="X Logo" className="w-10" />
         </div>
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign in to Twitter</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign in to NestConnect</h1>
         {error && (
           <div className="mb-4 p-2 bg-red-400 bg-opacity-30 text-red-800 rounded-md">
             {error}
