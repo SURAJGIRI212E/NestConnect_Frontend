@@ -43,7 +43,7 @@ export const Feed = () => {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  if (isError) return <div className="p-4 text-center text-blue-800">Error loading feed: {error.message}</div>;
+  if (isError) return <div className="p-4 text-center text-blue-800">Error loading feed: {error.message} due to third parties cookies blocked or Unauthorized</div>;
 
   return (
     
