@@ -8,18 +8,17 @@ import { SocketProvider } from './context/SocketContext';
 import LoadingShimmer from './components/LoadingShimmer';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
+import logo from './logo.png';
 
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const [showShimmer, setShowShimmer] = useState(true);
-  const [shimmerClass, setShimmerClass] = useState('');
   const [contentClass, setContentClass] = useState('');
 
   useEffect(() => {
     if (!loading) {
-      setShimmerClass('animate-fadeOut');
       const timer = setTimeout(() => {
         setShowShimmer(false);
         setContentClass('animate-fadeIn');
@@ -29,7 +28,19 @@ const ProtectedRoute = ({ children }) => {
   }, [loading]);
 
   if (showShimmer) {
-    return <LoadingShimmer className={shimmerClass}/>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-200 to-blue-400">
+        <div className="relative flex items-center justify-center">
+          {/* Logo with higher opacity and slight glow */}
+          <img 
+            src={logo} 
+            alt="Logo" 
+            className="w-20 opacity-75 absolute z-10 drop-shadow-lg" 
+          />
+          <LoadingShimmer/>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -41,26 +52,27 @@ const ProtectedRoute = ({ children }) => {
 
 // Public Route component (only accessible when not logged in)
 const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, hasCheckedAuth } = useAuth();
   const [showShimmer, setShowShimmer] = useState(true);
   const [shimmerClass, setShimmerClass] = useState('');
   const [contentClass, setContentClass] = useState('');
 
   useEffect(() => {
-    if (!loading) {
-      setShimmerClass('animate-fadeOut');
+    if (!loading && hasCheckedAuth) {
       const timer = setTimeout(() => {
         setShowShimmer(false);
+        setShimmerClass('animate-fadeOut');
         setContentClass('animate-fadeIn');
-      }, 500); // Duration of fadeOut animation
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading]);
+  }, [loading, hasCheckedAuth]);
 
-  if (showShimmer) {
+  // Show loading spinner with logo for both initial auth check and loading states
+  
+  if (!hasCheckedAuth || loading || showShimmer) {
     return <LoadingShimmer className={shimmerClass} type="login-page" />;
   }
-
   if (user) {
     return <Navigate to="/home" />;
   }
@@ -74,9 +86,24 @@ function App() {
 
   // Only render routes after auth check is complete
   if (!hasCheckedAuth) {
-    return <LoadingShimmer />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-200 to-blue-400">
+        <div className="relative flex items-center justify-center">
+          {/* Logo with higher opacity and slight glow */}
+          <img 
+            src={logo} 
+            alt="Logo" 
+            className="w-20 opacity-75 absolute z-10 drop-shadow-lg" 
+          />
+
+          {/* Spinner with shimmer effect */}
+          <LoadingShimmer/>
+        </div>
+      </div>
+    );
   }
 
+  
   return (
     <Router>
       <SocketProvider>
