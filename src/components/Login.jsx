@@ -13,6 +13,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+const [errorForget, setErrorForget]=useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -66,9 +67,11 @@ export const Login = () => {
         setForgotMsg('Password reset link sent to your email.');
         setCooldown(120); // Start 2-minute cooldown
       } else {
+        setErrorForget(true)
         setForgotMsg(response.data.message || 'Failed to send reset link.');
       }
     } catch (err) {
+      setErrorForget(true)
       setForgotMsg(err.response?.data?.message || 'Failed to send reset link.');
     } finally {
       setForgotLoading(false);
@@ -159,7 +162,7 @@ export const Login = () => {
                   ? `Wait ${cooldown}s to resend`
                   : 'Send Reset Link'}
             </button>
-            {forgotMsg && <div className="text-center text-green-700 mb-2">{forgotMsg}</div>}
+            {forgotMsg && <div className={`text-center mb-2 ${errorForget?'text-red-600':'text-green-700'}`}>{forgotMsg}</div>}
             <button
               onClick={() => { setShowForgotModal(false); setForgotEmail(''); setForgotMsg(''); }}
               className="w-full bg-gray-300 text-gray-800 py-2 rounded-full font-semibold mt-2"
