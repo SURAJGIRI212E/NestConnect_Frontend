@@ -38,6 +38,8 @@ export const WhoToFollowItemShimmer = () => (
 export const SpinnerShimmer=()=>(
   <div className="animate-spin h-8 w-8 border-t-4 border-b-4 rounded-full border-blue-600"></div>
 )
+
+//main loading shimmer
 const LoadingShimmer = ({ className, type }) => {
  
   const renderShimmerContent = () => {
@@ -53,10 +55,6 @@ const LoadingShimmer = ({ className, type }) => {
             <div className="absolute inset-0 animate-shimmer-flash"></div>
           </div>
         );
-      case 'feed-post':
-        return <FeedPostShimmer />;
-      case 'who-to-follow-item':
-        return <WhoToFollowItemShimmer />;
      case 'profile-page':
         return (
           <div className="flex flex-col w-full relative overflow-hidden">

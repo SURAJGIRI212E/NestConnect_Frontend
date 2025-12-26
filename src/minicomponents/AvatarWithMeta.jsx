@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PremiumBadge from './PremiumBadge';
+import LazyImage from './LazyImage';
 
 const sizeMap = {
   sm: 'w-7 h-7',
@@ -24,7 +25,12 @@ export default function AvatarWithMeta({
   const content = (
     <div className="flex items-center gap-2 min-w-0">
       <div className={`w-6 h-6 ${sizeClass} overflow-hidden rounded-full flex-shrink-0`}> 
-        <img src={avatar} alt="profile" className="w-full h-full object-cover" />
+        <LazyImage 
+          url={avatar} 
+          alt="profile" 
+          className="w-full h-full object-cover"
+          rounded={true}
+        />
       </div>
 
       {showMeta && (

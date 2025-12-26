@@ -20,6 +20,7 @@ import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import PremiumBadge from '../minicomponents/PremiumBadge';
 import { useQueryClient } from '@tanstack/react-query';
+import LazyImage from '../minicomponents/LazyImage';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
@@ -276,7 +277,12 @@ const Profile = () => {
         <div className="relative">
           <div className="h-48 bg-gray-300 relative overflow-hidden">
             {profileUser?.coverImage && (
-              <img src={profileUser.coverImage} alt="Cover" className="w-full h-full object-cover" />
+              <LazyImage 
+                url={profileUser.coverImage} 
+                alt="Cover" 
+                className="w-full h-full object-cover"
+                height="100%"
+              />
             )}
           </div>
 
@@ -285,7 +291,12 @@ const Profile = () => {
             <div className="flex items-end justify-between">
               <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-400 mt-[-55px] shadow-lg relative overflow-hidden">
                 {profileUser?.avatar && (
-                  <img src={profileUser.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                  <LazyImage 
+                    url={profileUser.avatar} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover"
+                    rounded={true}
+                  />
                 )}
               </div>
             </div>

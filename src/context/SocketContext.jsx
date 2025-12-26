@@ -30,7 +30,8 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!user?._id) return;
 
-    const fetchInitialConversations = async () => {      try {
+    const fetchInitialConversations = async () => {      
+      try {
         const response = await axiosInstance.get('/api/chat/conversations');
         if (response.data.status === 'success') {
           dispatch(setConversations(response.data.data));

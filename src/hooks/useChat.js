@@ -88,7 +88,8 @@ export const useChat = () => {
         // First check if conversation exists in redux store
         const existingConv = conversations.find(conv => 
           conv.participants.some(p => p._id === receiverId)
-        );        let conversationToUse;
+        );        
+        let conversationToUse;
         if (existingConv) {
           conversationToUse = existingConv;
         } else {
@@ -120,7 +121,8 @@ export const useChat = () => {
       } finally {
         setIsLoadingProfile(false);
       }
-    };    getConversation();
+    };    
+    getConversation();
   }, [selectedPeople, conversations]);
 
   // Listen to socket events
